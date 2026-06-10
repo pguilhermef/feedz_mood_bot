@@ -43,6 +43,25 @@ for /f "tokens=*" %%i in ('!PYTHON! --version 2^>^&1') do set PYVER=%%i
 echo ✅ %PYVER% encontrado.
 
 :: --------------------------------------------------
+:: 1.5 Verificar conexao com internet
+:: --------------------------------------------------
+echo [..] Verificando conexao com internet...
+ping -n 1 pypi.org >nul 2>nul
+if errorlevel 1 (
+    ping -n 1 google.com >nul 2>nul
+    if errorlevel 1 (
+        echo.
+        echo ❌ Sem conexao com a internet!
+        echo    O instalador precisa baixar dependencias.
+        echo    Conecte-se a internet e rode novamente.
+        echo.
+        pause
+        exit /b 1
+    )
+)
+echo ✅ Internet OK.
+
+:: --------------------------------------------------
 :: 2. Criar ambiente virtual
 :: --------------------------------------------------
 if not exist "venv\" (
@@ -78,7 +97,9 @@ echo ✅ Dependencias instaladas.
 :: 4. Instalar navegador Chromium
 :: --------------------------------------------------
 echo [..] Instalando navegador (pode demorar na primeira vez)...
-playwright install chromium >nul 2>nul
+echo     Baixando Chromium (~130MB)... Aguarde.
+echo.
+playwright install chromium
 if errorlevel 1 (
     echo.
     echo ❌ Falha ao instalar o navegador Chromium.
@@ -101,7 +122,9 @@ echo ✅ Navegador instalado.
 if exist ".env" (
     echo.
     echo ✅ Configuracao (.env) ja existe.
-    goto :config_done
+    set /p "RECONFIG=   Quer reconfigurar email/senha/humor? (S/N): "
+    if /i "!RECONFIG!" neq "S" goto :config_done
+    del ".env"
 )
 
 !PYTHON! criar_env.py
