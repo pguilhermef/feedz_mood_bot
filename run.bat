@@ -11,14 +11,12 @@ cd /d "%~dp0"
 if not exist "venv\Scripts\activate.bat" (
     echo ❌ Bot nao instalado ainda.
     echo    Rode o "instalar.bat" primeiro.
-    pause
-    exit /b 1
+    goto :error_exit
 )
 if not exist ".env" (
     echo ❌ Arquivo .env nao encontrado.
     echo    Rode o "instalar.bat" primeiro.
-    pause
-    exit /b 1
+    goto :error_exit
 )
 
 :: Ativar o venv
@@ -28,8 +26,16 @@ call venv\Scripts\activate.bat
 if "%VIRTUAL_ENV%"=="" (
     echo ❌ Falha ao ativar o ambiente virtual.
     echo    Tente deletar a pasta venv e rodar instalar.bat novamente.
-    pause
-    exit /b 1
+    goto :error_exit
 )
 
 python main.py
+exit /b 0
+
+:error_exit
+:: Só dar pause se rodou manualmente (não pelo Task Scheduler)
+echo %cmdcmdline% | find /i "/c" >nul
+if errorlevel 1 (
+    pause
+)
+exit /b 1
