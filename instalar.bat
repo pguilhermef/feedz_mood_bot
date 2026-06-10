@@ -95,7 +95,7 @@ echo   Agendamento automatico (opcional)
 echo ══════════════════════════════════════════
 echo.
 echo Como quer executar o bot?
-echo   1 = Rodar automaticamente ao ligar/logar no PC
+echo   1 = Rodar automaticamente ao ligar/logar no PC (recomendado)
 echo   2 = Rodar em um horario fixo todo dia
 echo   3 = Nao agendar (vou rodar manualmente)
 echo.
@@ -128,7 +128,10 @@ if "!SCHEDULE_OPT!"=="2" (
         echo    Tente rodar este instalador como Administrador.
     ) else (
         echo ✅ Agendado! O bot vai rodar todo dia as !HORA!.
+        echo    Se o PC estiver desligado nesse horario, vai rodar ao ligar.
         echo    Para remover: schtasks /delete /tn "!TASK_NAME!" /f
+        :: Habilitar "executar assim que possível" via XML update
+        schtasks /change /tn "!TASK_NAME!" /enable >nul 2>nul
     )
     goto :skip_schedule
 )
