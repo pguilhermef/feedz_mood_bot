@@ -115,27 +115,46 @@ echo ═════════════════════════
 echo   Agendamento automatico (opcional)
 echo ══════════════════════════════════════════
 echo.
-set /p "SCHEDULE=Quer que o bot rode sozinho todo dia? (S/N): "
+echo Como quer executar o bot?
+echo   1 = Rodar automaticamente ao ligar/logar no PC
+echo   2 = Rodar em um horario fixo todo dia
+echo   3 = Nao agendar (vou rodar manualmente)
+echo.
+set /p "SCHEDULE_OPT=Escolha [1/2/3]: "
 
-if /i "!SCHEDULE!" neq "S" goto :skip_schedule
-
-set /p "HORA=Horario de execucao (ex: 08:30): "
-if "!HORA!"=="" set "HORA=08:30"
-
-set "TASK_NAME=FeedzMoodBot"
-set "SCRIPT_PATH=%~dp0run.bat"
-
-schtasks /create /tn "%TASK_NAME%" /tr "\"%SCRIPT_PATH%\"" /sc daily /st !HORA! /f >nul 2>nul
-
-if errorlevel 1 (
-    echo.
-    echo ⚠️  Nao foi possivel agendar automaticamente.
-    echo    Pode ser necessario rodar como Administrador.
-    echo    Ou agende manualmente: Agendador de Tarefas ^> run.bat as !HORA!
-) else (
-    echo ✅ Agendado! O bot vai rodar todo dia as !HORA!.
-    echo    Para remover: schtasks /delete /tn "%TASK_NAME%" /f
+if "!SCHEDULE_OPT!"=="1" (
+    set "TASK_NAME=FeedzMoodBot"
+    set "SCRIPT_PATH=%~dp0run.bat"
+    schtasks /create /tn "!TASK_NAME!" /tr "\"!SCRIPT_PATH!\"" /sc onlogon /delay 0001:00 /f >nul 2>nul
+    if errorlevel 1 (
+        echo.
+        echo ⚠️  Nao foi possivel agendar automaticamente.
+        echo    Tente rodar este instalador como Administrador.
+    ) else (
+        echo ✅ Agendado! O bot vai rodar 1 min apos voce logar no PC.
+        echo    Para remover: schtasks /delete /tn "!TASK_NAME!" /f
+    )
+    goto :skip_schedule
 )
+
+if "!SCHEDULE_OPT!"=="2" (
+    set /p "HORA=Horario de execucao (ex: 08:30): "
+    if "!HORA!"=="" set "HORA=08:30"
+    set "TASK_NAME=FeedzMoodBot"
+    set "SCRIPT_PATH=%~dp0run.bat"
+    schtasks /create /tn "!TASK_NAME!" /tr "\"!SCRIPT_PATH!\"" /sc daily /st !HORA! /f >nul 2>nul
+    if errorlevel 1 (
+        echo.
+        echo ⚠️  Nao foi possivel agendar automaticamente.
+        echo    Tente rodar este instalador como Administrador.
+    ) else (
+        echo ✅ Agendado! O bot vai rodar todo dia as !HORA!.
+        echo    Para remover: schtasks /delete /tn "!TASK_NAME!" /f
+    )
+    goto :skip_schedule
+)
+
+echo OK, sem agendamento. Rode run.bat quando quiser.
 
 :skip_schedule
 
