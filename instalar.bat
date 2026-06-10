@@ -66,6 +66,20 @@ echo ✅ Dependencias instaladas.
 :: --------------------------------------------------
 echo [..] Instalando navegador (pode demorar na primeira vez)...
 playwright install chromium >nul 2>nul
+if errorlevel 1 (
+    echo.
+    echo ❌ Falha ao instalar o navegador Chromium.
+    echo.
+    echo    Possiveis causas:
+    echo    - Antivirus bloqueou o download (desative temporariamente)
+    echo    - Firewall corporativo bloqueou o acesso
+    echo    - Falta de espaco em disco
+    echo.
+    echo    Tente: desative o antivirus, rode novamente, depois reative.
+    echo.
+    pause
+    exit /b 1
+)
 echo ✅ Navegador instalado.
 
 :: --------------------------------------------------
