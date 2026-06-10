@@ -161,6 +161,19 @@ def _run_with_headless(use_headless: bool) -> bool:
                     continue
 
             if not clicked:
+                # Verificar se o humor já foi enviado hoje (widget não aparece)
+                try:
+                    # Se não há widget de humor na página, provavelmente já foi enviado
+                    mood_widget = page.locator('.mood-rating')
+                    if not mood_widget.is_visible(timeout=2000):
+                        print("✅ Humor já foi enviado hoje! Nada a fazer.")
+                        context.close()
+                        return True
+                except (PlaywrightTimeout, Exception):
+                    print("✅ Humor já foi enviado hoje! Nada a fazer.")
+                    context.close()
+                    return True
+
                 screenshot_path = "debug_screenshot.png"
                 page.screenshot(path=screenshot_path)
                 print(f"❌ Não foi possível encontrar o widget de humor.")
