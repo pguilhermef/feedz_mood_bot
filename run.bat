@@ -30,10 +30,24 @@ if "%VIRTUAL_ENV%"=="" (
 )
 
 python main.py
+
+:: Mostrar resultado
+if errorlevel 1 (
+    echo.
+    echo ⚠️  O bot encontrou um problema. Veja as mensagens acima.
+) else (
+    echo.
+    echo ✅ Bot finalizado.
+)
+
+:: Só dar pause se rodou manualmente (não pelo Task Scheduler)
+echo %cmdcmdline% | find /i "/c" >nul
+if errorlevel 1 (
+    timeout /t 5 >nul
+)
 exit /b 0
 
 :error_exit
-:: Só dar pause se rodou manualmente (não pelo Task Scheduler)
 echo %cmdcmdline% | find /i "/c" >nul
 if errorlevel 1 (
     pause
