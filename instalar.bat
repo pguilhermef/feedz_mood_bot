@@ -77,33 +77,12 @@ if exist ".env" (
     goto :config_done
 )
 
-echo.
-echo ══════════════════════════════════════════
-echo   Configure suas credenciais do Feedz
-echo ══════════════════════════════════════════
-echo.
-
-set /p "USER_EMAIL=📧 Seu email do Feedz: "
-set /p "USER_PASSWORD=🔑 Sua senha do Feedz: "
-echo.
-echo 😊 Escolha seu humor padrao:
-echo    1 = Muito triste
-echo    2 = Triste
-echo    3 = Neutro
-echo    4 = Feliz
-echo    5 = Muito feliz
-echo.
-set /p "USER_MOOD=Escolha [1-5] (padrao: 4): "
-
-if "!USER_MOOD!"=="" set "USER_MOOD=4"
-
-echo FEEDZ_EMAIL=!USER_EMAIL!> .env
-echo FEEDZ_PASSWORD=!USER_PASSWORD!>> .env
-echo FEEDZ_MOOD=!USER_MOOD!>> .env
-echo HEADLESS=true>> .env
-
-echo.
-echo ✅ Configuracao salva!
+python criar_env.py
+if errorlevel 1 (
+    echo ❌ Falha ao configurar credenciais.
+    pause
+    exit /b 1
+)
 
 :config_done
 
