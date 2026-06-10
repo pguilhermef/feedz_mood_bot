@@ -65,9 +65,10 @@ FEEDZ_MOOD=4
 | Problema | Solução |
 |----------|---------|
 | "Python não encontrado" | Instale Python e marque "Add to PATH" |
-| Bot não encontra o humor | Rode `python calibrate.py` |
-| Erro de login | Confira email/senha no `.env` |
+| Bot não encontra o humor | Rode `python dev/calibrate.py` |
+| Erro de login | Rode `instalar.bat` e reconfigure |
 | Quer ver o navegador | Mude `HEADLESS=false` no `.env` |
+| "Sem conexão com internet" | Conecte à internet e tente de novo |
 
 ---
 
@@ -75,9 +76,10 @@ FEEDZ_MOOD=4
 
 | Arquivo | O que faz |
 |---------|-----------|
-| `instalar.bat` | Instalação completa (rode uma vez) |
+| `instalar.bat` | Instalação completa (rode uma vez, ou de novo para reconfigurar) |
 | `run.bat` | Executa o bot (uso diário) |
 | `.env` | Suas credenciais (nunca é commitado) |
+| `dev/` | Ferramentas de desenvolvimento (ignore) |
 
 ---
 
