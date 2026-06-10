@@ -15,15 +15,25 @@ echo.
 :: --------------------------------------------------
 where python >nul 2>nul
 if errorlevel 1 (
-    echo ❌ Python nao encontrado!
-    echo.
-    echo    Instale em: https://www.python.org/downloads/
-    echo    IMPORTANTE: Marque "Add Python to PATH" durante a instalacao.
-    echo.
-    echo    Depois de instalar, rode este arquivo novamente.
-    echo.
-    pause
-    exit /b 1
+    :: Tentar py launcher (instalado por padrão no Windows)
+    where py >nul 2>nul
+    if errorlevel 1 (
+        echo ❌ Python nao encontrado!
+        echo.
+        echo    Como resolver:
+        echo    1. Baixe Python em: https://www.python.org/downloads/
+        echo    2. Na PRIMEIRA tela do instalador, marque:
+        echo       [x] "Add Python to PATH"  ^(embaixo, antes de clicar Install^)
+        echo    3. Clique "Install Now"
+        echo    4. FECHE este terminal e rode instalar.bat de novo
+        echo.
+        echo    Se ja instalou mas esqueceu de marcar PATH:
+        echo    - Desinstale o Python (Painel de Controle ^> Programas)
+        echo    - Instale novamente marcando "Add Python to PATH"
+        echo.
+        pause
+        exit /b 1
+    )
 )
 
 for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PYVER=%%i
