@@ -13,6 +13,7 @@ echo.
 :: --------------------------------------------------
 :: 1. Verificar Python
 :: --------------------------------------------------
+set "PYTHON=python"
 where python >nul 2>nul
 if errorlevel 1 (
     :: Tentar py launcher (instalado por padrão no Windows)
@@ -33,10 +34,12 @@ if errorlevel 1 (
         echo.
         pause
         exit /b 1
+    ) else (
+        set "PYTHON=py"
     )
 )
 
-for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PYVER=%%i
+for /f "tokens=*" %%i in ('!PYTHON! --version 2^>^&1') do set PYVER=%%i
 echo ✅ %PYVER% encontrado.
 
 :: --------------------------------------------------
@@ -45,7 +48,7 @@ echo ✅ %PYVER% encontrado.
 if not exist "venv\" (
     echo.
     echo [..] Criando ambiente virtual...
-    python -m venv venv
+    !PYTHON! -m venv venv
     if errorlevel 1 (
         echo ❌ Falha ao criar ambiente virtual.
         pause
@@ -101,7 +104,7 @@ if exist ".env" (
     goto :config_done
 )
 
-python criar_env.py
+!PYTHON! criar_env.py
 if errorlevel 1 (
     echo ❌ Falha ao configurar credenciais.
     pause
@@ -176,9 +179,10 @@ echo O navegador vai abrir VISIVEL para o primeiro login.
 echo Se aparecer CAPTCHA, resolva manualmente.
 echo A sessao sera salva para as proximas execucoes.
 echo.
+pause
 
 set "HEADLESS=false"
-python main.py
+!PYTHON! main.py
 set "HEADLESS="
 
 echo.
