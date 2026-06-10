@@ -6,33 +6,30 @@ cd /d "%~dp0"
 :: ============================================
 :: Feedz Mood Bot - Executar
 :: ============================================
-:: Se nao tem venv ou .env, rodar setup primeiro
-if not exist "venv\Scripts\activate.bat" goto :run_setup
-if not exist ".env" goto :run_setup
-goto :run_main
 
-:run_setup
-echo [..] Primeira execucao detectada. Rodando setup...
-echo.
-call "%~dp0setup.bat"
-if errorlevel 1 (
-    echo [ERRO] Setup falhou.
+:: Se nao tem venv ou .env, orientar a rodar instalar.bat
+if not exist "venv\Scripts\activate.bat" (
+    echo ❌ Bot nao instalado ainda.
+    echo    Rode o "instalar.bat" primeiro.
     pause
     exit /b 1
 )
-echo.
+if not exist ".env" (
+    echo ❌ Arquivo .env nao encontrado.
+    echo    Rode o "instalar.bat" primeiro.
+    pause
+    exit /b 1
+)
 
-:run_main
 :: Ativar o venv
 call venv\Scripts\activate.bat
 
 :: Verificar se o venv realmente ativou
 if "%VIRTUAL_ENV%"=="" (
-    echo [ERRO] Falha ao ativar o ambiente virtual.
-    echo        Tente deletar a pasta venv e rodar novamente.
+    echo ❌ Falha ao ativar o ambiente virtual.
+    echo    Tente deletar a pasta venv e rodar instalar.bat novamente.
     pause
     exit /b 1
 )
 
-echo [OK] Ambiente virtual ativo.
 python main.py
