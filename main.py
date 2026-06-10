@@ -1,0 +1,208 @@
+"""
+Feedz Mood Bot - Preenche o humor diário na plataforma Feedz automaticamente.
+Usa perfil persistente do navegador para manter a sessão (evita CAPTCHA).
+"""
+
+import os
+import sys
+from pathlib import Path
+from dotenv import load_dotenv
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+
+load_dotenv()
+
+FEEDZ_EMAIL = os.getenv("FEEDZ_EMAIL")
+FEEDZ_PASSWORD = os.getenv("FEEDZ_PASSWORD")
+FEEDZ_MOOD = os.getenv("FEEDZ_MOOD", "4")  # 1=Muito Mal, 2=Mal, 3=Neutro, 4=Bem, 5=Muito Bem
+HEADLESS = os.getenv("HEADLESS", "true").lower() == "true"
+
+FEEDZ_URL = "https://app.feedz.com.br"
+PROFILE_DIR = Path(__file__).parent / "browser_profile"
+
+
+def validate_env():
+    mood = int(FEEDZ_MOOD)
+    if mood < 1 or mood > 5:
+        print("❌ FEEDZ_MOOD deve ser entre 1 e 5")
+        sys.exit(1)
+
+
+def is_logged_in(page) -> bool:
+    """Verifica se já estamos logados checando se o formulário de login está visível."""
+    try:
+        # Se o botão de login existe e está visível, ainda não logou
+        if page.locator('#enter-login').is_visible(timeout=2000):
+            return False
+    except Exception:
+        pass
+    # Confirma que estamos no Feedz e não numa página de erro
+    return "app.feedz.com.br" in page.url
+
+
+def do_login(page):
+    """Tenta fazer login automático. Se falhar (CAPTCHA etc), pede login manual."""
+    print("🔑 Fazendo login...")
+
+    try:
+        page.fill('input[type="text"], input[name="login_email"]', FEEDZ_EMAIL)
+        page.fill('input[type="password"], input[name="login_password"]', FEEDZ_PASSWORD)
+        page.click('#enter-login')
+        page.wait_for_load_state("networkidle", timeout=15000)
+
+        if is_logged_in(page):
+            print("✅ Login automático realizado!")
+            return
+    except (PlaywrightTimeout, Exception):
+        pass
+
+    # Login automático falhou (CAPTCHA, mudança de interface, etc)
+    print("⚠️  Login automático falhou (possível CAPTCHA).")
+    print("👉 Faça login manualmente no navegador que abriu.")
+    print("   Aguardando você logar (máximo 120s)...")
+
+    # Aguardar o usuário logar manualmente
+    for _ in range(60):
+        page.wait_for_timeout(2000)
+        if is_logged_in(page):
+            print("✅ Login manual detectado!")
+            return
+
+    print("❌ Timeout aguardando login. Tente novamente.")
+    sys.exit(1)
+
+
+def run():
+    validate_env()
+
+    print(f"🤖 Iniciando bot (humor: {FEEDZ_MOOD}/5)")
+
+    # Na primeira vez ou quando o login expirar, abre visível para o usuário logar
+    # Nas próximas vezes, a sessão já está salva no perfil
+    first_run = not PROFILE_DIR.exists()
+    use_headless = HEADLESS and not first_run
+
+    if first_run:
+        print("🆕 Primeiro uso! O navegador vai abrir visível para você logar.")
+        print("   Nas próximas vezes, a sessão será reutilizada.")
+
+    with sync_playwright() as p:
+        context = p.chromium.launch_persistent_context(
+            user_data_dir=str(PROFILE_DIR),
+            headless=use_headless,
+            accept_downloads=False,
+        )
+        page = context.pages[0] if context.pages else context.new_page()
+
+        try:
+            # 1. Navegar para o Feedz
+            print("🌐 Abrindo Feedz...")
+            page.goto(FEEDZ_URL, wait_until="networkidle", timeout=30000)
+
+            # 2. Login (só se necessário)
+            if not is_logged_in(page):
+                if FEEDZ_EMAIL and FEEDZ_PASSWORD:
+                    do_login(page)
+                else:
+                    print("⚠️  Sessão expirada e FEEDZ_EMAIL/FEEDZ_PASSWORD não configurados.")
+                    print("👉 Faça login manualmente no navegador (120s)...")
+                    for _ in range(60):
+                        page.wait_for_timeout(2000)
+                        if is_logged_in(page):
+                            print("✅ Login manual detectado!")
+                            break
+                    else:
+                        print("❌ Timeout aguardando login.")
+                        sys.exit(1)
+            else:
+                print("✅ Sessão ativa! Login não necessário.")
+
+            # 3. Aguardar página carregar e verificar popup de pesquisa
+            print("⏳ Aguardando página carregar...")
+            page.wait_for_timeout(10000)
+
+            try:
+                close_btn = page.locator('button.close[data-dismiss="modal"][aria-label="close"]')
+                if close_btn.is_visible(timeout=3000):
+                    close_btn.click()
+                    print("✅ Popup de pesquisa fechado.")
+                    page.wait_for_timeout(1000)
+            except (PlaywrightTimeout, Exception):
+                pass
+
+            # 4. Tentar encontrar e clicar no widget de humor
+            print("⏳ Aguardando widget de humor...")
+            page.wait_for_timeout(3000)
+
+            mood_selectors = [
+                f'.mood-rating input[name="mood"][value="{FEEDZ_MOOD}"]',
+                f'img.mood-select-image[src$="mood-{FEEDZ_MOOD}.png"]',
+                f'.mood-rating label:nth-child({FEEDZ_MOOD}) img.mood-select-image',
+            ]
+
+            clicked = False
+            for selector in mood_selectors:
+                try:
+                    element = page.locator(selector).first
+                    if element.is_visible(timeout=2000):
+                        element.click()
+                        clicked = True
+                        print(f"✅ Humor selecionado! (seletor: {selector})")
+                        break
+                except (PlaywrightTimeout, Exception):
+                    continue
+
+            if not clicked:
+                screenshot_path = "debug_screenshot.png"
+                page.screenshot(path=screenshot_path)
+                print(f"❌ Não foi possível encontrar o widget de humor.")
+                print(f"📸 Screenshot salvo em: {screenshot_path}")
+                if HEADLESS:
+                    print("   Rode novamente com HEADLESS=false no .env para ver o navegador.")
+            else:
+                # 5. Verificar popup de pesquisa novamente após clicar no humor
+                page.wait_for_timeout(2000)
+                try:
+                    close_btn = page.locator('button.close[data-dismiss="modal"][aria-label="close"]')
+                    if close_btn.is_visible(timeout=3000):
+                        close_btn.click()
+                        print("✅ Popup de pesquisa fechado.")
+                        page.wait_for_timeout(1000)
+                except (PlaywrightTimeout, Exception):
+                    pass
+
+                # 6. Clicar no botão "Enviar humor"
+                try:
+                    btn = page.locator('#fdz-btn-send-mood')
+                    btn.wait_for(state="visible", timeout=5000)
+                    btn.click()
+                    print("✅ Botão 'Enviar humor' clicado!")
+                except (PlaywrightTimeout, Exception):
+                    print("❌ Não encontrou o botão 'Enviar humor'.")
+
+                # 7. Aguardar 10s e verificar se os emojis sumiram
+                page.wait_for_timeout(10000)
+
+                try:
+                    if page.locator('.mood-rating').is_visible(timeout=2000):
+                        print("❌ ERRO: Os emojis ainda estão visíveis. O humor pode não ter sido enviado.")
+                        page.screenshot(path="error_screenshot.png")
+                        print("📸 Screenshot salvo em: error_screenshot.png")
+                    else:
+                        print("🎉 Humor enviado com sucesso!")
+                except (PlaywrightTimeout, Exception):
+                    print("🎉 Humor enviado com sucesso!")
+
+        except PlaywrightTimeout as e:
+            print(f"❌ Timeout: {e}")
+            page.screenshot(path="error_screenshot.png")
+            print("📸 Screenshot de erro salvo.")
+        except Exception as e:
+            print(f"❌ Erro: {e}")
+            page.screenshot(path="error_screenshot.png")
+            print("📸 Screenshot de erro salvo.")
+        finally:
+            context.close()
+
+
+if __name__ == "__main__":
+    run()

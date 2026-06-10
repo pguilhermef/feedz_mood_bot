@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.pyc
+debug_screenshot.png
+error_screenshot.png
+venv/
+browser_profile/
+calibration_*.png
+calibration_page.html
