@@ -15,9 +15,11 @@ Preenche seu humor diário na plataforma **Feedz** automaticamente. Um clique po
 1. [Baixe o bot](https://github.com/pguilhermef/feedz_mood_bot/archive/refs/heads/main.zip) e extraia a pasta
 2. Dê **duplo clique** em `instalar.bat`
 3. Preencha seu email, senha e humor quando pedido
-4. Pronto! ✅
+4. O navegador vai abrir para o primeiro login — resolva o CAPTCHA se aparecer
+5. Escolha se quer agendamento automático (no login do PC ou horário fixo)
+6. Pronto! ✅
 
-> O instalador faz tudo: cria ambiente, instala dependências, configura credenciais e testa.
+> O instalador faz tudo: instala dependências, configura credenciais, faz o primeiro login com navegador visível (para CAPTCHA) e agenda. Nas próximas execuções, roda em segundo plano.
 
 ---
 
@@ -29,13 +31,15 @@ Dê duplo clique em **`run.bat`** — ou deixe agendado e não faça nada.
 
 ## ⏰ Agendamento automático
 
-Durante a instalação, o bot pergunta se quer agendar execução diária.
+Durante a instalação, você escolhe:
+- **Opção 1** — Rodar ao ligar/logar no PC (recomendado)
+- **Opção 2** — Rodar em horário fixo todo dia
+- **Opção 3** — Sem agendamento (rodar manualmente)
 
-Se quiser agendar depois:
-1. Abra o **Agendador de Tarefas** (`Win + R` → `taskschd.msc`)
-2. Criar Tarefa Básica → Nome: `FeedzMoodBot`
-3. Disparador: **Diariamente** no horário desejado
-4. Ação: **Iniciar programa** → selecione `run.bat`
+Para remover o agendamento:
+```
+schtasks /delete /tn "FeedzMoodBot" /f
+```
 
 ---
 
