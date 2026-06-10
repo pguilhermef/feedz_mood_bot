@@ -21,9 +21,15 @@ PROFILE_DIR = Path(__file__).parent / "browser_profile"
 
 
 def validate_env():
-    mood = int(FEEDZ_MOOD)
+    try:
+        mood = int(FEEDZ_MOOD)
+    except (ValueError, TypeError):
+        print("❌ FEEDZ_MOOD inválido no .env. Use um número de 1 a 5.")
+        print("   Edite o arquivo .env e corrija o valor de FEEDZ_MOOD.")
+        sys.exit(1)
     if mood < 1 or mood > 5:
         print("❌ FEEDZ_MOOD deve ser entre 1 e 5")
+        print("   Edite o arquivo .env e corrija o valor de FEEDZ_MOOD.")
         sys.exit(1)
 
 
