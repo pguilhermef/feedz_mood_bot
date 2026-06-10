@@ -159,23 +159,28 @@ echo OK, sem agendamento. Rode run.bat quando quiser.
 :skip_schedule
 
 :: --------------------------------------------------
-:: 7. Primeiro teste
+:: 7. Primeiro login (navegador visivel)
 :: --------------------------------------------------
 echo.
 echo ══════════════════════════════════════════
-echo   Testando o bot...
+echo   Primeiro login
 echo ══════════════════════════════════════════
 echo.
-echo O bot vai rodar agora para confirmar que tudo funciona.
+echo O navegador vai abrir VISIVEL para o primeiro login.
+echo Se aparecer CAPTCHA, resolva manualmente.
+echo A sessao sera salva para as proximas execucoes.
 echo.
 
+set "HEADLESS=false"
 python main.py
+set "HEADLESS="
 
 echo.
 echo ══════════════════════════════════════════
 echo   Instalacao concluida!
 echo ══════════════════════════════════════════
 echo.
+echo   Nas proximas vezes, o bot roda em segundo plano (sem abrir navegador).
 echo   Para rodar manualmente: clique duas vezes em run.bat
 echo.
 pause
