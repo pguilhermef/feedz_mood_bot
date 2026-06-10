@@ -1,6 +1,11 @@
 @echo off
+chcp 65001 >nul
+setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
+:: ============================================
+:: Feedz Mood Bot - Executar
+:: ============================================
 :: Se nao tem venv ou .env, rodar setup primeiro
 if not exist "venv\Scripts\activate.bat" goto :run_setup
 if not exist ".env" goto :run_setup
@@ -21,7 +26,7 @@ echo.
 :: Ativar o venv
 call venv\Scripts\activate.bat
 
-:: Verificar se o venv realmente ativou (VIRTUAL_ENV é setado pelo activate)
+:: Verificar se o venv realmente ativou
 if "%VIRTUAL_ENV%"=="" (
     echo [ERRO] Falha ao ativar o ambiente virtual.
     echo        Tente deletar a pasta venv e rodar novamente.
