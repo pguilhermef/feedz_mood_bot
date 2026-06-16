@@ -21,9 +21,16 @@ PROFILE_DIR = Path(__file__).parent / "browser_profile"
 
 
 def validate_env():
-    mood = int(FEEDZ_MOOD)
+    try:
+        mood = int(FEEDZ_MOOD)
+    except (ValueError, TypeError):
+        print("❌ FEEDZ_MOOD inválido no .env. Use um número de 1 a 5.")
+        print("   Edite o arquivo .env e corrija o valor de FEEDZ_MOOD.")
+        sys.exit(1)
+
     if mood < 1 or mood > 5:
         print("❌ FEEDZ_MOOD deve ser entre 1 e 5")
+        print("   Edite o arquivo .env e corrija o valor de FEEDZ_MOOD.")
         sys.exit(1)
 
 
@@ -57,18 +64,6 @@ def do_login(page):
 
     # Login automático falhou (CAPTCHA, mudança de interface, etc)
     print("⚠️  Login automático falhou (possível CAPTCHA).")
-    print("👉 Faça login manualmente no navegador que abriu.")
-    print("   Aguardando você logar (máximo 120s)...")
-
-    # Aguardar o usuário logar manualmente
-    for _ in range(60):
-        page.wait_for_timeout(2000)
-        if is_logged_in(page):
-            print("✅ Login manual detectado!")
-            return
-
-    print("❌ Timeout aguardando login. Tente novamente.")
-    sys.exit(1)
 
 
 def run():
@@ -85,6 +80,19 @@ def run():
         print("🆕 Primeiro uso! O navegador vai abrir visível para você logar.")
         print("   Nas próximas vezes, a sessão será reutilizada.")
 
+    logged_in = _run_with_headless(use_headless)
+
+    # Se falhou em headless, reabre visível para o usuário resolver
+    if not logged_in and use_headless:
+        print("")
+        print("🔄 Reabrindo navegador visível para você resolver...")
+        print("   (Sessão expirou ou CAPTCHA detectado)")
+        print("")
+        _run_with_headless(False)
+
+
+def _run_with_headless(use_headless: bool) -> bool:
+    """Executa o fluxo do bot. Retorna True se logou com sucesso."""
     with sync_playwright() as p:
         context = p.chromium.launch_persistent_context(
             user_data_dir=str(PROFILE_DIR),
@@ -102,8 +110,15 @@ def run():
             if not is_logged_in(page):
                 if FEEDZ_EMAIL and FEEDZ_PASSWORD:
                     do_login(page)
-                else:
-                    print("⚠️  Sessão expirada e FEEDZ_EMAIL/FEEDZ_PASSWORD não configurados.")
+
+                # Verificar se login funcionou
+                if not is_logged_in(page):
+                    if use_headless:
+                        print("⚠️  Login falhou em modo invisível.")
+                        context.close()
+                        return False
+
+                    print("⚠️  Login automático falhou.")
                     print("👉 Faça login manualmente no navegador (120s)...")
                     for _ in range(60):
                         page.wait_for_timeout(2000)
@@ -112,7 +127,8 @@ def run():
                             break
                     else:
                         print("❌ Timeout aguardando login.")
-                        sys.exit(1)
+                        context.close()
+                        return False
             else:
                 print("✅ Sessão ativa! Login não necessário.")
 
@@ -152,9 +168,21 @@ def run():
                     continue
 
             if not clicked:
+                # Verificar se o humor já foi enviado hoje (widget não aparece)
+                try:
+                    mood_widget = page.locator('.mood-rating')
+                    if not mood_widget.is_visible(timeout=2000):
+                        print("✅ Humor já foi enviado hoje! Nada a fazer.")
+                        context.close()
+                        return True
+                except (PlaywrightTimeout, Exception):
+                    print("✅ Humor já foi enviado hoje! Nada a fazer.")
+                    context.close()
+                    return True
+
                 screenshot_path = "debug_screenshot.png"
                 page.screenshot(path=screenshot_path)
-                print(f"❌ Não foi possível encontrar o widget de humor.")
+                print("❌ Não foi possível encontrar o widget de humor.")
                 print(f"📸 Screenshot salvo em: {screenshot_path}")
                 if HEADLESS:
                     print("   Rode novamente com HEADLESS=false no .env para ver o navegador.")
@@ -198,10 +226,15 @@ def run():
             print("📸 Screenshot de erro salvo.")
         except Exception as e:
             print(f"❌ Erro: {e}")
-            page.screenshot(path="error_screenshot.png")
-            print("📸 Screenshot de erro salvo.")
+            try:
+                page.screenshot(path="error_screenshot.png")
+                print("📸 Screenshot de erro salvo.")
+            except Exception:
+                pass
         finally:
             context.close()
+
+    return True
 
 
 if __name__ == "__main__":
