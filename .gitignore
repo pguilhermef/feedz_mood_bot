@@ -7,7 +7,3 @@ venv/
 browser_profile/
 calibration_*.png
 calibration_page.html
-PLANO.md
-dist/
-build/
-*.spec

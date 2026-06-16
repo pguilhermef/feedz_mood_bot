@@ -1,55 +1,83 @@
 @echo off
 chcp 65001 >nul
-setlocal enabledelayedexpansion
+setlocal
 cd /d "%~dp0"
 
-:: ============================================
-:: Feedz Mood Bot - Executar
-:: ============================================
+set "PROJECT_DIR=%~dp0"
+set "BOOTSTRAP_PS1=%~dp0bootstrap.ps1"
+set "LOGS_DIR=%PROJECT_DIR%logs"
+set "LAUNCHER_LOG=%LOGS_DIR%\launcher_latest.log"
 
-:: Se nao tem venv ou .env, orientar a rodar instalar.bat
-if not exist "venv\Scripts\activate.bat" (
-    echo ❌ Bot nao instalado ainda.
-    echo    Rode o "instalar.bat" primeiro.
-    goto :error_exit
-)
-if not exist ".env" (
-    echo ❌ Arquivo .env nao encontrado.
-    echo    Rode o "instalar.bat" primeiro.
-    goto :error_exit
-)
+if not exist "%LOGS_DIR%" mkdir "%LOGS_DIR%" >nul 2>nul
 
-:: Ativar o venv
-call venv\Scripts\activate.bat
-
-:: Verificar se o venv realmente ativou
-if "%VIRTUAL_ENV%"=="" (
-    echo ❌ Falha ao ativar o ambiente virtual.
-    echo    Tente deletar a pasta venv e rodar instalar.bat novamente.
-    goto :error_exit
+>"%LAUNCHER_LOG%" (
+    echo ============================================
+    echo Feedz Mood Bot - Launcher
+    echo Data/Hora: %date% %time%
+    echo Computador: %COMPUTERNAME%
+    echo Usuario: %USERNAME%
+    echo Pasta do projeto: %PROJECT_DIR%
+    echo ============================================
 )
 
-python main.py
+echo [..] Iniciando Feedz Mood Bot...
+echo [..] Log do launcher: "%LAUNCHER_LOG%"
+>>"%LAUNCHER_LOG%" echo CMD version: %CMDEXTVERSION%
+>>"%LAUNCHER_LOG%" echo COMSPEC: %COMSPEC%
 
-:: Mostrar resultado
+if not exist "%BOOTSTRAP_PS1%" (
+    echo [ERRO] Arquivo bootstrap.ps1 nao encontrado.
+    >>"%LAUNCHER_LOG%" echo [ERRO] bootstrap.ps1 nao encontrado.
+    >>"%LAUNCHER_LOG%" echo Caminho esperado: %BOOTSTRAP_PS1%
+    pause
+    exit /b 1
+)
+
+call :resolve_powershell
+if errorlevel 1 (
+    echo [ERRO] PowerShell nao encontrado nesta maquina.
+    echo        Nao foi possivel iniciar o bootstrap.
+    >>"%LAUNCHER_LOG%" echo [ERRO] PowerShell nao encontrado.
+    pause
+    exit /b 1
+)
+
+>>"%LAUNCHER_LOG%" echo PowerShell detectado: %PS_EXE%
+
+if not exist "%PS_EXE%" (
+    echo [ERRO] Executavel do PowerShell nao existe no caminho detectado.
+    >>"%LAUNCHER_LOG%" echo [ERRO] Caminho invalido para PowerShell: %PS_EXE%
+    pause
+    exit /b 1
+)
+
+"%PS_EXE%" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%BOOTSTRAP_PS1%"
+set "BOOTSTRAP_EXIT=%ERRORLEVEL%"
+>>"%LAUNCHER_LOG%" echo Codigo de saida do bootstrap: %BOOTSTRAP_EXIT%
+
 if errorlevel 1 (
     echo.
-    echo ⚠️  O bot encontrou um problema. Veja as mensagens acima.
-) else (
-    echo.
-    echo ✅ Bot finalizado.
+    echo [ERRO] Fluxo automatico falhou.
+    echo        Consulte os logs em: "%LOGS_DIR%"
+    echo        Se necessario, mova a pasta do projeto para "Documentos" e rode de novo.
+    pause
+    exit /b %BOOTSTRAP_EXIT%
 )
 
-:: Só dar pause se rodou manualmente (não pelo Task Scheduler)
-echo %cmdcmdline% | find /i "/c" >nul
-if errorlevel 1 (
-    timeout /t 5 >nul
-)
+echo.
+echo [OK] Processo concluido.
+pause
 exit /b 0
 
-:error_exit
-echo %cmdcmdline% | find /i "/c" >nul
-if errorlevel 1 (
-    pause
+:resolve_powershell
+set "PS_EXE=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
+if exist "%PS_EXE%" exit /b 0
+
+for %%P in (powershell.exe pwsh.exe) do (
+    for /f "delims=" %%I in ('where %%P 2^>nul') do (
+        set "PS_EXE=%%I"
+        exit /b 0
+    )
 )
+
 exit /b 1
