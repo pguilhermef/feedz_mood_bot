@@ -1,141 +1,96 @@
-# 🤖 Feedz Mood Bot
+# Feedz Mood Bot
 
-Automação simples que preenche seu humor diário na plataforma **Feedz** automaticamente.
-
----
-
-## 📋 Pré-requisitos
-
-- Windows 10/11
-- Conexao com internet na primeira execucao
-
-> O script principal tenta instalar Python automaticamente (sem abrir link) e prepara tudo sozinho.
+[PT-BR](#pt-br) | [EN](#en)
 
 ---
 
-## 🚀 Setup e execução (1 clique)
+## PT-BR
 
-1. Clique duas vezes em `run.bat`.
-2. Na primeira vez, o script vai:
-   - instalar Python automaticamente (se faltar);
-   - criar o ambiente virtual;
-   - instalar os pacotes do `requirements.txt`;
-   - instalar o Chromium do Playwright;
-   - pedir email/senha/humor e criar `.env`.
-3. Depois disso, ele executa o bot.
+Bot para preencher automaticamente o humor diario no Feedz.
 
-> Dica importante: execute o projeto em uma pasta local comum (ex: `Documentos` ou `Desktop`).
-> Evite rede corporativa, OneDrive bloqueado, ZIP aberto sem extrair ou pasta sem permissao de escrita.
+### Fluxo recomendado (1 clique)
 
-Nas próximas execucoes, basta clicar em `run.bat` novamente.
+1. Baixe/clone o projeto e extraia em uma pasta local comum (Documents ou Desktop).
+2. Clique duas vezes em run.bat.
+3. Na primeira execucao, ele faz tudo sozinho:
+   - instala Python automaticamente (se faltar),
+   - cria ambiente virtual,
+   - instala dependencias,
+   - instala Chromium do Playwright,
+   - pede email/senha/humor e cria o .env.
 
-Se quiser somente preparar o ambiente sem rodar o bot, use `setup.bat`.
+Depois disso, basta clicar em run.bat quando quiser rodar novamente.
 
-### Escala de Humor
+Observacao: evite rodar em pasta de rede, ZIP sem extrair, OneDrive bloqueado ou local sem permissao de escrita.
 
-| Valor | Humor     |
-| ----- | --------- |
-| 1     | Muito Mal |
-| 2     | Mal       |
-| 3     | Neutro    |
-| 4     | Bem       |
-| 5     | Muito Bem |
+### Escala de humor
 
----
+| Valor | Humor |
+| --- | --- |
+| 1 | Muito mal |
+| 2 | Mal |
+| 3 | Neutro |
+| 4 | Bem |
+| 5 | Muito bem |
 
-## ▶️ Como usar
+### Scripts principais
 
-Execute `run.bat`.
+- run.bat: fluxo completo de clique unico (setup + execucao).
+- setup.bat: somente setup (sem rodar o bot).
+- calibrate.py: utilitario de calibracao quando o Feedz mudar layout.
+- instalar.bat: instalador legado guiado (opcional).
 
-O bot vai:
+### Troubleshooting rapido
 
-1. Abrir o Feedz (sem janela visível)
-2. Fazer login com seu email/senha
-3. Preencher o humor
-4. Fechar
+| Problema | O que fazer |
+| --- | --- |
+| run.bat nao abre / fecha rapido | Abrir logs/launcher_latest.log |
+| Falha ao instalar pacote/browser | Rodar run.bat novamente (ha tentativas automaticas) |
+| Erro de permissao em arquivo | Mover pasta para Documents/Desktop |
+| Bot nao encontra widget de humor | Rodar python calibrate.py |
+| Erro de login | Recriar .env rodando run.bat novamente |
 
----
+Para debug visual, use HEADLESS=false no .env.
 
-## 🔧 Primeiro uso — Calibração
+### Logs
 
-Como o Feedz pode mudar a interface, rode a **calibração** na primeira vez para garantir que os seletores estão corretos:
-
-```bash
-python calibrate.py
-```
-
-Isso vai:
-
-- Abrir o navegador **visível** e logar no Feedz
-- Listar os elementos encontrados na página
-- Salvar screenshots e o HTML para análise
-- Manter o navegador aberto 60s para você inspecionar com F12
-
-Se o `main.py` não conseguir clicar no humor automaticamente, use as informações da calibração para ajustar os seletores no `main.py`.
+- logs/launcher_latest.log: problemas para iniciar o launcher.
+- logs/run_YYYYMMDD_HHMMSS.log: erro tecnico completo do bootstrap/execucao.
 
 ---
 
-## ⏰ Agendar execução diária (opcional)
+## EN
 
-### Windows (Agendador de Tarefas)
+Bot to auto-submit your daily mood on Feedz.
 
-1. Abra o **Agendador de Tarefas** (`taskschd.msc`)
-2. **Criar Tarefa Básica**
-3. Nome: `Feedz Mood Bot`
-4. Disparador: **Diariamente** no horário desejado (ex: 08:30)
-5. Ação: **Iniciar um programa**
-   - Programa: `C:\Users\SEU_USUARIO\SysRepos\feedz-mood-bot\venv\Scripts\python.exe`
-   - Argumentos: `main.py`
-   - Iniciar em: `C:\Users\SEU_USUARIO\SysRepos\feedz-mood-bot`
-6. Concluir
+### Recommended flow (one click)
 
-### Linux/Mac (cron)
+1. Clone/download the project into a regular local folder (Documents or Desktop).
+2. Double-click run.bat.
+3. On first run, it handles everything automatically:
+   - installs Python if missing,
+   - creates virtual environment,
+   - installs dependencies,
+   - installs Playwright Chromium,
+   - asks credentials/mood and creates .env.
 
-```bash
-# Editar crontab
-crontab -e
+After that, just double-click run.bat whenever you want to run it.
 
-# Rodar todo dia às 8:30
-30 8 * * 1-5 cd /caminho/para/feedz-mood-bot && venv/bin/python main.py
-```
+### Main scripts
 
----
+- run.bat: full one-click flow (setup + run).
+- setup.bat: setup only.
+- calibrate.py: calibration helper if Feedz UI changes.
+- instalar.bat: legacy guided installer (optional).
 
-## 👥 Para o time
+### Quick troubleshooting
 
-Cada pessoa do time precisa:
+- If run.bat closes immediately: check logs/launcher_latest.log.
+- If package/browser install fails: run run.bat again (auto-retry enabled).
+- If permission issues occur: move project to Documents/Desktop.
+- If mood widget is not found: run python calibrate.py.
 
-1. **Clonar** este repositório (ou copiar a pasta)
-2. Executar `run.bat` uma vez para preparar o ambiente
-3. Criar seu próprio `.env` com suas credenciais
-4. Agendar a tarefa no seu computador
+### Logs
 
-> ⚠️ O arquivo `.env` está no `.gitignore` — suas credenciais **nunca** serão commitadas.
-
----
-
-## 🐛 Troubleshooting
-
-| Problema                           | Solução                                                 |
-| ---------------------------------- | ------------------------------------------------------- |
-| `run.bat` nao abre / fecha na hora | Veja `logs/launcher_latest.log` e execute pelo terminal |
-| Erro de permissao ao criar arquivos | Mova a pasta para `Documentos` e execute novamente      |
-| Falha intermitente ao instalar pacote | Rode `run.bat` de novo (agora existe tentativa automatica) |
-| Bot não encontra o widget de humor | Rode `python calibrate.py` e ajuste os seletores        |
-| Erro de timeout                    | O Feedz pode estar lento. Aumente os timeouts no código |
-| Erro de login                      | Verifique email/senha no `.env`                         |
-| Navegador não instalado            | Rode `playwright install chromium`                      |
-
-Para debug, mude `HEADLESS=false` no `.env` para ver o navegador em ação.
-
-### Onde ver o erro exato
-
-Agora cada execucao gera log em `logs/` (arquivo `run_YYYYMMDD_HHMMSS.log`).
-
-Se der erro no computador de outro usuario, basta abrir esse arquivo para ver o detalhe tecnico completo.
-
-Se o `run.bat` nao abrir ao dar duplo clique:
-
-1. Abra `cmd` e rode o script por la para ver a mensagem de erro.
-2. Abra `logs/launcher_latest.log` (erro de inicializacao do launcher).
-3. Abra o log mais recente `logs/run_YYYYMMDD_HHMMSS.log` (erro detalhado do bootstrap).
+- logs/launcher_latest.log: launcher startup failures.
+- logs/run_YYYYMMDD_HHMMSS.log: detailed bootstrap/runtime failures.
