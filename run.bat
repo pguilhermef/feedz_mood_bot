@@ -168,7 +168,7 @@ exit /b 0
 
 :ensure_task_start_when_available
 set "FEEDZ_TASK_NAME=%TASK_NAME%"
-"%PS_EXE%" -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$taskName = $env:FEEDZ_TASK_NAME; try { $service = New-Object -ComObject 'Schedule.Service'; $service.Connect(); $root = $service.GetFolder('\\'); $task = $root.GetTask($taskName); $def = $task.Definition; if (-not $def.Settings.StartWhenAvailable) { $def.Settings.StartWhenAvailable = $true; $null = $root.RegisterTaskDefinition($taskName, $def, 6, $null, $null, $def.Principal.LogonType, $null) }; exit 0 } catch { exit 1 }" >nul 2>nul
+"%PS_EXE%" -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$taskName = $env:FEEDZ_TASK_NAME; try { $service = New-Object -ComObject 'Schedule.Service'; $service.Connect(); $root = $service.GetFolder('\\'); $task = $root.GetTask($taskName); $def = $task.Definition; if (-not $def.Settings.StartWhenAvailable) { $def.Settings.StartWhenAvailable = $true; $userId = $def.Principal.UserId; $logonType = $def.Principal.LogonType; $null = $root.RegisterTaskDefinition($taskName, $def, 6, $userId, $null, $logonType, $null) }; $after = $root.GetTask($taskName); if (-not $after.Definition.Settings.StartWhenAvailable) { throw 'StartWhenAvailable continuou desativado' }; exit 0 } catch { exit 1 }" >nul 2>nul
 if errorlevel 1 (
     echo [AVISO] Nao foi possivel ativar execucao apos horario perdido.
     echo         O bot continua funcionando, mas sem recuperacao automatica.
