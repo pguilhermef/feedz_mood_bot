@@ -38,7 +38,7 @@ Observacao: evite rodar em pasta de rede, ZIP sem extrair, OneDrive bloqueado ou
 - run.bat: fluxo completo de clique unico (setup + execucao).
 - setup.bat: somente setup (sem rodar o bot).
 - calibrate.py: utilitario de calibracao quando o Feedz mudar layout.
-- instalar.bat: instalador legado guiado (opcional).
+- instalar.bat: alias de setup (mesmo fluxo automatico robusto).
 
 ### Troubleshooting rapido
 
@@ -50,6 +50,8 @@ Observacao: evite rodar em pasta de rede, ZIP sem extrair, OneDrive bloqueado ou
 | Bot nao encontra widget de humor | Rodar python calibrate.py                           |
 | Erro de login                    | Recriar .env rodando run.bat novamente              |
 
+Se nao aparecer log em `logs/`, verifique o fallback em `%TEMP%\FeedzMoodBotLogs`.
+
 Para debug visual, use HEADLESS=false no .env.
 
 ### Logs
@@ -59,6 +61,7 @@ Para debug visual, use HEADLESS=false no .env.
 - logs/app\_<RUN_ID>.log e logs/app_latest.log: log tecnico do Python (bot).
 - logs/error_latest.log: ultimo erro detalhado de bootstrap.
 - logs/summary_latest.txt: resumo final da ultima execucao (status, exit code e caminhos de log).
+- Fallback: `%TEMP%\FeedzMoodBotLogs` quando a pasta do projeto nao permite escrita.
 
 ---
 
@@ -84,7 +87,7 @@ After that, just double-click run.bat whenever you want to run it.
 - run.bat: full one-click flow (setup + run).
 - setup.bat: setup only.
 - calibrate.py: calibration helper if Feedz UI changes.
-- instalar.bat: legacy guided installer (optional).
+- instalar.bat: setup alias (same robust automatic flow).
 
 ### Quick troubleshooting
 
@@ -92,6 +95,7 @@ After that, just double-click run.bat whenever you want to run it.
 - If package/browser install fails: run run.bat again (auto-retry enabled).
 - If permission issues occur: move project to Documents/Desktop.
 - If mood widget is not found: run python calibrate.py.
+- If no log appears in `logs/`, check `%TEMP%\FeedzMoodBotLogs`.
 
 ### Logs
 
@@ -100,3 +104,4 @@ After that, just double-click run.bat whenever you want to run it.
 - logs/app\_<RUN_ID>.log and logs/app_latest.log: Python bot technical logs.
 - logs/error_latest.log: latest detailed bootstrap error.
 - logs/summary_latest.txt: last execution summary (status, exit code, and log paths).
+- Fallback: `%TEMP%\FeedzMoodBotLogs` when project folder is not writable.

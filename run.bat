@@ -6,6 +6,20 @@ cd /d "%~dp0"
 set "PROJECT_DIR=%~dp0"
 set "BOOTSTRAP_PS1=%~dp0bootstrap.ps1"
 set "LOGS_DIR=%PROJECT_DIR%logs"
+
+call :ensure_logs_dir "%LOGS_DIR%"
+if errorlevel 1 (
+    set "LOGS_DIR=%TEMP%\FeedzMoodBotLogs"
+    call :ensure_logs_dir "%LOGS_DIR%"
+)
+
+if errorlevel 1 (
+    echo [ERRO] Nao foi possivel preparar pasta de logs.
+    echo        Verifique permissao de escrita em "%PROJECT_DIR%" e em "%TEMP%".
+    pause
+    exit /b 1
+)
+
 set "LAUNCHER_LOG=%LOGS_DIR%\launcher_latest.log"
 
 set "RUN_ID=%DATE%_%TIME%"
@@ -15,8 +29,6 @@ set "RUN_ID=%RUN_ID::=-%"
 set "RUN_ID=%RUN_ID:.=-%"
 set "RUN_ID=%RUN_ID:,=-%"
 set "FEEDZ_RUN_ID=%RUN_ID%"
-
-if not exist "%LOGS_DIR%" mkdir "%LOGS_DIR%" >nul 2>nul
 
 >"%LAUNCHER_LOG%" (
     echo ============================================
@@ -77,6 +89,17 @@ if errorlevel 1 (
 echo.
 echo [OK] Processo concluido.
 pause
+exit /b 0
+
+:ensure_logs_dir
+set "TARGET_LOGS_DIR=%~1"
+if not exist "%TARGET_LOGS_DIR%" mkdir "%TARGET_LOGS_DIR%" >nul 2>nul
+if not exist "%TARGET_LOGS_DIR%" exit /b 1
+
+set "PROBE_FILE=%TARGET_LOGS_DIR%\.write_test"
+(echo ok>"%PROBE_FILE%") >nul 2>nul
+if not exist "%PROBE_FILE%" exit /b 1
+del "%PROBE_FILE%" >nul 2>nul
 exit /b 0
 
 :resolve_powershell
