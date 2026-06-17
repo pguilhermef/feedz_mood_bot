@@ -55,8 +55,8 @@ Para debug visual, use HEADLESS=false no .env.
 ### Logs
 
 - logs/launcher_latest.log: problemas para iniciar o launcher.
-- logs/run_<RUN_ID>.log: log tecnico completo do bootstrap/execucao.
-- logs/app_<RUN_ID>.log e logs/app_latest.log: log tecnico do Python (bot).
+- logs/run\_<RUN_ID>.log: log tecnico completo do bootstrap/execucao.
+- logs/app\_<RUN_ID>.log e logs/app_latest.log: log tecnico do Python (bot).
 - logs/error_latest.log: ultimo erro detalhado de bootstrap.
 - logs/summary_latest.txt: resumo final da ultima execucao (status, exit code e caminhos de log).
 
@@ -96,7 +96,7 @@ After that, just double-click run.bat whenever you want to run it.
 ### Logs
 
 - logs/launcher_latest.log: launcher startup failures.
-- logs/run_<RUN_ID>.log: detailed bootstrap/runtime failures.
-- logs/app_<RUN_ID>.log and logs/app_latest.log: Python bot technical logs.
+- logs/run\_<RUN_ID>.log: detailed bootstrap/runtime failures.
+- logs/app\_<RUN_ID>.log and logs/app_latest.log: Python bot technical logs.
 - logs/error_latest.log: latest detailed bootstrap error.
 - logs/summary_latest.txt: last execution summary (status, exit code, and log paths).
