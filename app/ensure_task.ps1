@@ -48,10 +48,6 @@ $xml = @"
         <DaysInterval>1</DaysInterval>
       </ScheduleByDay>
     </CalendarTrigger>
-    <LogonTrigger>
-      <Enabled>true</Enabled>
-      <UserId>$userId</UserId>
-    </LogonTrigger>
   </Triggers>
   <Principals>
     <Principal id="Author">
@@ -120,12 +116,8 @@ try {
         $triggerTypes += [string]$trigger.Type
     }
 
-    if (-not ($triggerTypes -contains "2")) {
-        throw "CalendarTrigger ausente"
-    }
-
-    if (-not ($triggerTypes -contains "9")) {
-        throw "LogonTrigger ausente"
+    if ($triggerTypes.Count -ne 1 -or $triggerTypes[0] -ne "2") {
+      throw "A tarefa deve ter apenas CalendarTrigger diario"
     }
 }
 finally {

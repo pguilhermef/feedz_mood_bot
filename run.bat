@@ -11,6 +11,7 @@ set "APP_DIR=%PROJECT_DIR%app"
 set "BOOTSTRAP_PS1=%APP_DIR%\bootstrap.ps1"
 set "ENSURE_TASK_PS1=%APP_DIR%\ensure_task.ps1"
 set "LOGS_DIR=%APP_DIR%\logs"
+set "LAST_RUN_FILE=%LOGS_DIR%\last_scheduled_run.txt"
 set "TASK_NAME=FeedzMoodBot"
 set "TASK_TIME=08:30"
 set "TASK_SCRIPT=%~f0"
@@ -83,6 +84,8 @@ if not exist "%PS_EXE%" (
 )
 
 call :ensure_daily_task
+call :skip_if_scheduled_already_ran_today
+if not errorlevel 1 exit /b 0
 
 if not exist "%BOOTSTRAP_PS1%" (
     echo [ERRO] Arquivo bootstrap.ps1 nao encontrado.
@@ -105,6 +108,8 @@ if errorlevel 1 (
     call :pause_on_error
     exit /b %BOOTSTRAP_EXIT%
 )
+
+call :mark_scheduled_run_success
 
 echo.
 echo [OK] Processo concluido.
@@ -166,8 +171,51 @@ if errorlevel 1 (
     exit /b 0
 )
 
-echo [OK] Tarefa %TASK_NAME% validada com recuperacao, bateria e gatilhos de backup.
->>"%LAUNCHER_LOG%" echo Politica valida: StartWhenAvailable=ON, bateria=permitido, triggers=daily/startup/logon
+echo [OK] Tarefa %TASK_NAME% validada para execucao diaria unica com recuperacao.
+>>"%LAUNCHER_LOG%" echo Politica valida: StartWhenAvailable=ON, bateria=permitido, trigger=daily, instancias=IgnoreNew
+exit /b 0
+
+:skip_if_scheduled_already_ran_today
+if not "%IS_SCHEDULED_RUN%"=="1" exit /b 1
+
+set "TODAY_ISO="
+for /f "usebackq delims=" %%I in (`"%PS_EXE%" -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "(Get-Date).ToString('yyyy-MM-dd')"`) do set "TODAY_ISO=%%I"
+
+if not defined TODAY_ISO (
+    >>"%LAUNCHER_LOG%" echo [AVISO] Nao foi possivel determinar data atual para trava diaria.
+    exit /b 1
+)
+
+if exist "%LAST_RUN_FILE%" (
+    set /p LAST_RUN_DATE=<"%LAST_RUN_FILE%"
+    if /i "%LAST_RUN_DATE%"=="%TODAY_ISO%" (
+        echo [OK] Execucao agendada ja realizada hoje (%TODAY_ISO%). Encerrando.
+        >>"%LAUNCHER_LOG%" echo Execucao agendada ignorada: ja executou em %TODAY_ISO%
+        exit /b 0
+    )
+)
+
+exit /b 1
+
+:mark_scheduled_run_success
+if not "%IS_SCHEDULED_RUN%"=="1" exit /b 0
+
+if not defined TODAY_ISO (
+    for /f "usebackq delims=" %%I in (`"%PS_EXE%" -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "(Get-Date).ToString('yyyy-MM-dd')"`) do set "TODAY_ISO=%%I"
+)
+
+if not defined TODAY_ISO (
+    >>"%LAUNCHER_LOG%" echo [AVISO] Nao foi possivel registrar data da execucao agendada.
+    exit /b 0
+)
+
+>"%LAST_RUN_FILE%" echo %TODAY_ISO%
+if errorlevel 1 (
+    >>"%LAUNCHER_LOG%" echo [AVISO] Falha ao gravar controle de execucao unica diaria em %LAST_RUN_FILE%
+) else (
+    >>"%LAUNCHER_LOG%" echo Controle diario atualizado para %TODAY_ISO%
+)
+
 exit /b 0
 
 :resolve_powershell
