@@ -6,6 +6,9 @@ cd /d "%~dp0"
 set "PROJECT_DIR=%~dp0"
 set "BOOTSTRAP_PS1=%~dp0bootstrap.ps1"
 set "LOGS_DIR=%PROJECT_DIR%logs"
+set "TASK_NAME=FeedzMoodBot"
+set "TASK_TIME=08:30"
+set "TASK_SCRIPT=%~f0"
 
 call :ensure_logs_dir "%LOGS_DIR%"
 if errorlevel 1 (
@@ -46,6 +49,8 @@ echo [..] Log do launcher: "%LAUNCHER_LOG%"
 >>"%LAUNCHER_LOG%" echo CMD version: %CMDEXTVERSION%
 >>"%LAUNCHER_LOG%" echo COMSPEC: %COMSPEC%
 >>"%LAUNCHER_LOG%" echo FEEDZ_RUN_ID: %FEEDZ_RUN_ID%
+
+call :ensure_daily_task
 
 if not exist "%BOOTSTRAP_PS1%" (
     echo [ERRO] Arquivo bootstrap.ps1 nao encontrado.
@@ -125,6 +130,29 @@ exit /b 0
 echo.
 echo [..] O terminal ficara aberto para voce revisar o erro.
 pause
+exit /b 0
+
+:ensure_daily_task
+echo [..] Verificando agendamento diario...
+>>"%LAUNCHER_LOG%" echo Verificando tarefa agendada: %TASK_NAME%
+
+schtasks /query /tn "%TASK_NAME%" >nul 2>nul
+if not errorlevel 1 (
+    echo [OK] Tarefa agendada ja existe: %TASK_NAME%
+    >>"%LAUNCHER_LOG%" echo Tarefa ja existe: %TASK_NAME%
+    exit /b 0
+)
+
+schtasks /create /tn "%TASK_NAME%" /tr "\"%TASK_SCRIPT%\"" /sc daily /st %TASK_TIME% /f >nul 2>nul
+if errorlevel 1 (
+    echo [AVISO] Nao foi possivel criar tarefa agendada automaticamente.
+    echo         O bot vai continuar a execucao normal.
+    >>"%LAUNCHER_LOG%" echo Falha ao criar tarefa %TASK_NAME% em %TASK_TIME%
+    exit /b 0
+)
+
+echo [OK] Tarefa agendada criada: %TASK_NAME% (%TASK_TIME% diario)
+>>"%LAUNCHER_LOG%" echo Tarefa criada com sucesso: %TASK_NAME% (%TASK_TIME% diario)
 exit /b 0
 
 :resolve_powershell

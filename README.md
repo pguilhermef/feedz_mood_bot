@@ -17,7 +17,8 @@ Bot para preencher automaticamente o humor diario no Feedz.
    - cria ambiente virtual,
    - instala dependencias,
    - instala Chromium do Playwright,
-   - pede email/senha/humor e cria o .env.
+   - pede email/senha/humor e cria o .env,
+   - garante uma tarefa agendada diaria (FeedzMoodBot) para rodar automaticamente.
 
 Depois disso, basta clicar em run.bat quando quiser rodar novamente.
 
@@ -36,6 +37,7 @@ Observacao: evite rodar em pasta de rede, ZIP sem extrair, OneDrive bloqueado ou
 ### Scripts principais
 
 - run.bat: fluxo completo de clique unico (setup + execucao).
+   - tambem garante o agendamento diario automatico se a tarefa ainda nao existir.
 - setup.bat: somente setup (sem rodar o bot).
 - calibrate.py: utilitario de calibracao quando o Feedz mudar layout.
 - instalar.bat: alias de setup (mesmo fluxo automatico robusto).
@@ -85,6 +87,7 @@ After that, just double-click run.bat whenever you want to run it.
 ### Main scripts
 
 - run.bat: full one-click flow (setup + run).
+   - also ensures daily automatic scheduling if the task does not exist yet.
 - setup.bat: setup only.
 - calibrate.py: calibration helper if Feedz UI changes.
 - instalar.bat: setup alias (same robust automatic flow).
