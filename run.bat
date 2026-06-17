@@ -3,9 +3,13 @@ chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
+set "IS_SCHEDULED_RUN=0"
+if /i "%~1"=="--scheduled" set "IS_SCHEDULED_RUN=1"
+
 set "PROJECT_DIR=%~dp0"
 set "APP_DIR=%PROJECT_DIR%app"
 set "BOOTSTRAP_PS1=%APP_DIR%\bootstrap.ps1"
+set "ENSURE_TASK_PS1=%APP_DIR%\ensure_task.ps1"
 set "LOGS_DIR=%APP_DIR%\logs"
 set "TASK_NAME=FeedzMoodBot"
 set "TASK_TIME=08:30"
@@ -51,6 +55,7 @@ echo [..] Log do launcher: "%LAUNCHER_LOG%"
 >>"%LAUNCHER_LOG%" echo COMSPEC: %COMSPEC%
 >>"%LAUNCHER_LOG%" echo FEEDZ_RUN_ID: %FEEDZ_RUN_ID%
 >>"%LAUNCHER_LOG%" echo APP_DIR: %APP_DIR%
+>>"%LAUNCHER_LOG%" echo IS_SCHEDULED_RUN: %IS_SCHEDULED_RUN%
 
 if not exist "%APP_DIR%" (
     echo [ERRO] Pasta interna "app" nao encontrada.
@@ -103,6 +108,7 @@ if errorlevel 1 (
 
 echo.
 echo [OK] Processo concluido.
+if "%IS_SCHEDULED_RUN%"=="1" exit /b 0
 pause
 exit /b 0
 
@@ -136,6 +142,7 @@ if exist "%ERROR_LOG%" (
 exit /b 0
 
 :pause_on_error
+if "%IS_SCHEDULED_RUN%"=="1" exit /b 0
 echo.
 echo [..] O terminal ficara aberto para voce revisar o erro.
 pause
@@ -145,39 +152,22 @@ exit /b 0
 echo [..] Verificando agendamento diario...
 >>"%LAUNCHER_LOG%" echo Verificando tarefa agendada: %TASK_NAME%
 
-schtasks /query /tn "%TASK_NAME%" >nul 2>nul
-if not errorlevel 1 (
-    echo [OK] Tarefa agendada ja existe: %TASK_NAME%
-    >>"%LAUNCHER_LOG%" echo Tarefa ja existe: %TASK_NAME%
-    call :ensure_task_start_when_available
+if not exist "%ENSURE_TASK_PS1%" (
+    echo [AVISO] Script de agendamento robusto nao encontrado: "%ENSURE_TASK_PS1%"
+    >>"%LAUNCHER_LOG%" echo Falha: ensure_task.ps1 nao encontrado em %ENSURE_TASK_PS1%
     exit /b 0
 )
 
-schtasks /create /tn "%TASK_NAME%" /tr "\"%TASK_SCRIPT%\"" /sc daily /st %TASK_TIME% /f >nul 2>nul
+"%PS_EXE%" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%ENSURE_TASK_PS1%" -TaskName "%TASK_NAME%" -TaskScript "%TASK_SCRIPT%" -TaskTime "%TASK_TIME%" >nul 2>nul
 if errorlevel 1 (
-    echo [AVISO] Nao foi possivel criar tarefa agendada automaticamente.
-    echo         O bot vai continuar a execucao normal.
-    >>"%LAUNCHER_LOG%" echo Falha ao criar tarefa %TASK_NAME% em %TASK_TIME%
+    echo [AVISO] Nao foi possivel aplicar politica forte da tarefa agendada.
+    echo         O bot continua funcionando, mas sem garantia total de recuperacao.
+    >>"%LAUNCHER_LOG%" echo Falha ao aplicar politica forte na tarefa %TASK_NAME%
     exit /b 0
 )
 
-echo [OK] Tarefa agendada criada: %TASK_NAME% (%TASK_TIME% diario)
->>"%LAUNCHER_LOG%" echo Tarefa criada com sucesso: %TASK_NAME% (%TASK_TIME% diario)
-call :ensure_task_start_when_available
-exit /b 0
-
-:ensure_task_start_when_available
-set "FEEDZ_TASK_NAME=%TASK_NAME%"
-"%PS_EXE%" -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$taskName = $env:FEEDZ_TASK_NAME; try { $service = New-Object -ComObject 'Schedule.Service'; $service.Connect(); $root = $service.GetFolder('\\'); $task = $root.GetTask($taskName); $def = $task.Definition; if (-not $def.Settings.StartWhenAvailable) { $def.Settings.StartWhenAvailable = $true; $userId = $def.Principal.UserId; $logonType = $def.Principal.LogonType; $null = $root.RegisterTaskDefinition($taskName, $def, 6, $userId, $null, $logonType, $null) }; $after = $root.GetTask($taskName); if (-not $after.Definition.Settings.StartWhenAvailable) { throw 'StartWhenAvailable continuou desativado' }; exit 0 } catch { exit 1 }" >nul 2>nul
-if errorlevel 1 (
-    echo [AVISO] Nao foi possivel ativar execucao apos horario perdido.
-    echo         O bot continua funcionando, mas sem recuperacao automatica.
-    >>"%LAUNCHER_LOG%" echo Falha ao ativar StartWhenAvailable na tarefa %TASK_NAME%
-    exit /b 0
-)
-
-echo [OK] Recuperacao apos horario perdido ativada para %TASK_NAME%.
->>"%LAUNCHER_LOG%" echo StartWhenAvailable ativo para %TASK_NAME%
+echo [OK] Tarefa %TASK_NAME% validada com recuperacao, bateria e gatilhos de backup.
+>>"%LAUNCHER_LOG%" echo Politica valida: StartWhenAvailable=ON, bateria=permitido, triggers=daily/startup/logon
 exit /b 0
 
 :resolve_powershell
