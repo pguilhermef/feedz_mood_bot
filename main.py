@@ -83,21 +83,104 @@ def is_logged_in(page) -> bool:
     return "app.feedz.com.br" in page.url
 
 
+def _fill_first_visible(page, selectors: list[str], value: str, label: str) -> bool:
+    """Preenche o primeiro campo visível entre os seletores informados."""
+    for selector in selectors:
+        try:
+            field = page.locator(selector).first
+            if field.is_visible(timeout=1200):
+                field.click()
+                field.fill("")
+                field.type(value, delay=20)
+                LOGGER.info("Campo %s preenchido com seletor: %s", label, selector)
+                return True
+        except Exception:
+            continue
+
+    LOGGER.warning("Nenhum campo visivel encontrado para %s", label)
+    return False
+
+
+def _click_first_visible(page, selectors: list[str], label: str) -> bool:
+    """Clica no primeiro elemento visível entre os seletores informados."""
+    for selector in selectors:
+        try:
+            element = page.locator(selector).first
+            if element.is_visible(timeout=1200):
+                element.click()
+                LOGGER.info("Elemento %s clicado com seletor: %s", label, selector)
+                return True
+        except Exception:
+            continue
+
+    LOGGER.warning("Nenhum elemento visivel encontrado para %s", label)
+    return False
+
+
 def do_login(page):
     """Tenta fazer login automático. Se falhar (CAPTCHA etc), pede login manual."""
     print("🔑 Fazendo login...")
 
     try:
-        page.fill('input[type="text"], input[name="login_email"]', FEEDZ_EMAIL)
-        page.fill('input[type="password"], input[name="login_password"]', FEEDZ_PASSWORD)
-        page.click('#enter-login')
+        page.wait_for_timeout(1500)
+
+        email_ok = _fill_first_visible(
+            page,
+            [
+                'input[name="login_email"]',
+                'input[id="login_email"]',
+                'input[type="email"]',
+                'input[name*="email" i]',
+                'input[id*="email" i]',
+                'input[type="text"]',
+            ],
+            FEEDZ_EMAIL,
+            "email",
+        )
+
+        password_ok = _fill_first_visible(
+            page,
+            [
+                'input[name="login_password"]',
+                'input[id="login_password"]',
+                'input[type="password"]',
+                'input[name*="password" i]',
+                'input[id*="password" i]',
+                'input[name*="senha" i]',
+                'input[id*="senha" i]',
+            ],
+            FEEDZ_PASSWORD,
+            "senha",
+        )
+
+        if not (email_ok and password_ok):
+            LOGGER.warning("Preenchimento automatico incompleto: email_ok=%s, password_ok=%s", email_ok, password_ok)
+            return
+
+        submit_ok = _click_first_visible(
+            page,
+            [
+                '#enter-login',
+                'button[type="submit"]',
+                'input[type="submit"]',
+                'button:has-text("Entrar")',
+                'button:has-text("Login")',
+            ],
+            "botao_login",
+        )
+
+        if not submit_ok:
+            LOGGER.warning("Nao foi possivel clicar no botao de login automaticamente")
+            return
+
         page.wait_for_load_state("networkidle", timeout=15000)
 
         if is_logged_in(page):
             print("✅ Login automático realizado!")
+            LOGGER.info("Login automatico concluido")
             return
     except (PlaywrightTimeout, Exception):
-        pass
+        LOGGER.exception("Erro durante tentativa de login automatico")
 
     # Login automático falhou (CAPTCHA, mudança de interface, etc)
     print("⚠️  Login automático falhou (possível CAPTCHA).")
