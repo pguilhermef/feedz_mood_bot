@@ -5,6 +5,8 @@ Usa perfil persistente do navegador para manter a sessão (evita CAPTCHA).
 
 import os
 import sys
+import shutil
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
@@ -18,6 +20,39 @@ HEADLESS = os.getenv("HEADLESS", "true").lower() == "true"
 
 FEEDZ_URL = "https://app.feedz.com.br"
 PROFILE_DIR = Path(__file__).parent / "browser_profile"
+LOGS_DIR = Path(__file__).parent / "logs"
+
+RUN_ID_RAW = os.getenv("FEEDZ_RUN_ID", "manual")
+RUN_ID = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in RUN_ID_RAW)
+APP_LOG_FILE = LOGS_DIR / f"app_{RUN_ID}.log"
+APP_LOG_LATEST = LOGS_DIR / "app_latest.log"
+
+
+def init_logger() -> logging.Logger:
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
+    logger = logging.getLogger("feedz_mood_bot")
+    logger.setLevel(logging.INFO)
+    logger.handlers.clear()
+
+    file_handler = logging.FileHandler(APP_LOG_FILE, encoding="utf-8")
+    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    logger.propagate = False
+
+    return logger
+
+
+LOGGER = init_logger()
+
+
+def sync_latest_log():
+    try:
+        shutil.copyfile(APP_LOG_FILE, APP_LOG_LATEST)
+    except Exception:
+        # Se falhar para atualizar o atalho do ultimo log, o arquivo principal ja existe.
+        pass
 
 
 def validate_env():
@@ -26,11 +61,13 @@ def validate_env():
     except (ValueError, TypeError):
         print("❌ FEEDZ_MOOD inválido no .env. Use um número de 1 a 5.")
         print("   Edite o arquivo .env e corrija o valor de FEEDZ_MOOD.")
+        LOGGER.error("FEEDZ_MOOD invalido no .env: %s", FEEDZ_MOOD)
         sys.exit(1)
 
     if mood < 1 or mood > 5:
         print("❌ FEEDZ_MOOD deve ser entre 1 e 5")
         print("   Edite o arquivo .env e corrija o valor de FEEDZ_MOOD.")
+        LOGGER.error("FEEDZ_MOOD fora do intervalo permitido: %s", FEEDZ_MOOD)
         sys.exit(1)
 
 
@@ -64,17 +101,20 @@ def do_login(page):
 
     # Login automático falhou (CAPTCHA, mudança de interface, etc)
     print("⚠️  Login automático falhou (possível CAPTCHA).")
+    LOGGER.warning("Login automatico falhou; pode ser CAPTCHA ou mudanca de layout")
 
 
 def run():
     validate_env()
 
     print(f"🤖 Iniciando bot (humor: {FEEDZ_MOOD}/5)")
+    LOGGER.info("Inicio da execucao | run_id=%s | humor=%s | headless_env=%s", RUN_ID, FEEDZ_MOOD, HEADLESS)
 
     # Na primeira vez ou quando o login expirar, abre visível para o usuário logar
     # Nas próximas vezes, a sessão já está salva no perfil
     first_run = not PROFILE_DIR.exists()
     use_headless = HEADLESS and not first_run
+    LOGGER.info("Configuracao de execucao | first_run=%s | use_headless=%s", first_run, use_headless)
 
     if first_run:
         print("🆕 Primeiro uso! O navegador vai abrir visível para você logar.")
@@ -88,6 +128,7 @@ def run():
         print("🔄 Reabrindo navegador visível para você resolver...")
         print("   (Sessão expirou ou CAPTCHA detectado)")
         print("")
+        LOGGER.warning("Fallback para modo visivel apos falha de login em headless")
         _run_with_headless(False)
 
 
@@ -104,6 +145,7 @@ def _run_with_headless(use_headless: bool) -> bool:
         try:
             # 1. Navegar para o Feedz
             print("🌐 Abrindo Feedz...")
+            LOGGER.info("Abrindo URL do Feedz: %s", FEEDZ_URL)
             page.goto(FEEDZ_URL, wait_until="networkidle", timeout=30000)
 
             # 2. Login (só se necessário)
@@ -115,6 +157,7 @@ def _run_with_headless(use_headless: bool) -> bool:
                 if not is_logged_in(page):
                     if use_headless:
                         print("⚠️  Login falhou em modo invisível.")
+                        LOGGER.warning("Login falhou em modo headless")
                         context.close()
                         return False
 
@@ -127,10 +170,12 @@ def _run_with_headless(use_headless: bool) -> bool:
                             break
                     else:
                         print("❌ Timeout aguardando login.")
+                        LOGGER.error("Timeout aguardando login manual")
                         context.close()
                         return False
             else:
                 print("✅ Sessão ativa! Login não necessário.")
+                LOGGER.info("Sessao ativa detectada")
 
             # 3. Aguardar página carregar e verificar popup de pesquisa
             print("⏳ Aguardando página carregar...")
@@ -173,10 +218,12 @@ def _run_with_headless(use_headless: bool) -> bool:
                     mood_widget = page.locator('.mood-rating')
                     if not mood_widget.is_visible(timeout=2000):
                         print("✅ Humor já foi enviado hoje! Nada a fazer.")
+                        LOGGER.info("Humor ja enviado anteriormente; encerrando sem acao")
                         context.close()
                         return True
                 except (PlaywrightTimeout, Exception):
                     print("✅ Humor já foi enviado hoje! Nada a fazer.")
+                    LOGGER.info("Humor ja enviado (detecao por excecao na leitura do widget)")
                     context.close()
                     return True
 
@@ -184,6 +231,7 @@ def _run_with_headless(use_headless: bool) -> bool:
                 page.screenshot(path=screenshot_path)
                 print("❌ Não foi possível encontrar o widget de humor.")
                 print(f"📸 Screenshot salvo em: {screenshot_path}")
+                LOGGER.error("Nao foi possivel encontrar o widget de humor | screenshot=%s", screenshot_path)
                 if HEADLESS:
                     print("   Rode novamente com HEADLESS=false no .env para ver o navegador.")
             else:
@@ -204,8 +252,10 @@ def _run_with_headless(use_headless: bool) -> bool:
                     btn.wait_for(state="visible", timeout=5000)
                     btn.click()
                     print("✅ Botão 'Enviar humor' clicado!")
+                    LOGGER.info("Botao 'Enviar humor' clicado")
                 except (PlaywrightTimeout, Exception):
                     print("❌ Não encontrou o botão 'Enviar humor'.")
+                    LOGGER.error("Nao encontrou o botao 'Enviar humor'")
 
                 # 7. Aguardar 10s e verificar se os emojis sumiram
                 page.wait_for_timeout(10000)
@@ -215,21 +265,28 @@ def _run_with_headless(use_headless: bool) -> bool:
                         print("❌ ERRO: Os emojis ainda estão visíveis. O humor pode não ter sido enviado.")
                         page.screenshot(path="error_screenshot.png")
                         print("📸 Screenshot salvo em: error_screenshot.png")
+                        LOGGER.error("Widget ainda visivel apos envio | screenshot=error_screenshot.png")
                     else:
                         print("🎉 Humor enviado com sucesso!")
+                        LOGGER.info("Humor enviado com sucesso")
                 except (PlaywrightTimeout, Exception):
                     print("🎉 Humor enviado com sucesso!")
+                    LOGGER.info("Humor enviado com sucesso (confirmacao por timeout ao reler widget)")
 
         except PlaywrightTimeout as e:
             print(f"❌ Timeout: {e}")
             page.screenshot(path="error_screenshot.png")
             print("📸 Screenshot de erro salvo.")
+            LOGGER.exception("Timeout no fluxo Playwright")
         except Exception as e:
             print(f"❌ Erro: {e}")
+            LOGGER.exception("Erro inesperado no fluxo principal")
             try:
                 page.screenshot(path="error_screenshot.png")
                 print("📸 Screenshot de erro salvo.")
+                LOGGER.error("Screenshot de erro salvo em error_screenshot.png")
             except Exception:
+                LOGGER.exception("Falha ao salvar screenshot de erro")
                 pass
         finally:
             context.close()
@@ -238,4 +295,11 @@ def _run_with_headless(use_headless: bool) -> bool:
 
 
 if __name__ == "__main__":
-    run()
+    try:
+        run()
+    except Exception:
+        LOGGER.exception("Erro nao tratado no entrypoint")
+        print(f"❌ Erro inesperado. Veja o log tecnico: {APP_LOG_FILE}")
+        sys.exit(1)
+    finally:
+        sync_latest_log()

@@ -8,11 +8,20 @@ set "BOOTSTRAP_PS1=%~dp0bootstrap.ps1"
 set "LOGS_DIR=%PROJECT_DIR%logs"
 set "LAUNCHER_LOG=%LOGS_DIR%\launcher_latest.log"
 
+set "RUN_ID=%DATE%_%TIME%"
+set "RUN_ID=%RUN_ID: =0%"
+set "RUN_ID=%RUN_ID:/=-%"
+set "RUN_ID=%RUN_ID::=-%"
+set "RUN_ID=%RUN_ID:.=-%"
+set "RUN_ID=%RUN_ID:,=-%"
+set "FEEDZ_RUN_ID=%RUN_ID%"
+
 if not exist "%LOGS_DIR%" mkdir "%LOGS_DIR%" >nul 2>nul
 
 >"%LAUNCHER_LOG%" (
     echo ============================================
     echo Feedz Mood Bot - Launcher
+    echo Run ID: %RUN_ID%
     echo Data/Hora: %date% %time%
     echo Computador: %COMPUTERNAME%
     echo Usuario: %USERNAME%
@@ -24,6 +33,7 @@ echo [..] Iniciando Feedz Mood Bot...
 echo [..] Log do launcher: "%LAUNCHER_LOG%"
 >>"%LAUNCHER_LOG%" echo CMD version: %CMDEXTVERSION%
 >>"%LAUNCHER_LOG%" echo COMSPEC: %COMSPEC%
+>>"%LAUNCHER_LOG%" echo FEEDZ_RUN_ID: %FEEDZ_RUN_ID%
 
 if not exist "%BOOTSTRAP_PS1%" (
     echo [ERRO] Arquivo bootstrap.ps1 nao encontrado.

@@ -27,8 +27,17 @@ catch {
     }
 }
 
-$timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-$logFile = Join-Path $logsDir "run_$timestamp.log"
+$runIdRaw = $env:FEEDZ_RUN_ID
+if ([string]::IsNullOrWhiteSpace($runIdRaw)) {
+    $runIdRaw = Get-Date -Format "yyyyMMdd_HHmmss"
+}
+
+$runId = ($runIdRaw -replace "[^a-zA-Z0-9_-]", "_")
+$env:FEEDZ_RUN_ID = $runId
+
+$logFile = Join-Path $logsDir "run_$runId.log"
+$errorLogFile = Join-Path $logsDir "error_latest.log"
+$summaryLogFile = Join-Path $logsDir "summary_latest.txt"
 
 $transcriptStarted = $false
 try {
@@ -57,6 +66,31 @@ function Write-Warn {
 function Write-Fail {
     param([string]$Message)
     Write-Host "[ERRO] $Message" -ForegroundColor Red
+}
+
+function Write-RunSummary {
+    param(
+        [string]$Status,
+        [string]$Message,
+        [int]$ExitCode = 0
+    )
+
+    try {
+        @(
+            "status=$Status"
+            "run_id=$runId"
+            "timestamp=$((Get-Date).ToString('o'))"
+            "exit_code=$ExitCode"
+            "message=$Message"
+            "bootstrap_log=$logFile"
+            "error_log=$errorLogFile"
+            "app_log=$(Join-Path $logsDir ('app_' + $runId + '.log'))"
+            "launcher_log=$(Join-Path $logsDir 'launcher_latest.log')"
+        ) | Set-Content -Path $summaryLogFile -Encoding UTF8
+    }
+    catch {
+        Write-Warn "Nao foi possivel escrever resumo em $summaryLogFile"
+    }
 }
 
 function Invoke-WithRetry {
@@ -315,6 +349,9 @@ try {
     Write-Host "  Feedz Mood Bot - Bootstrap"
     Write-Host "============================================"
     Write-Host ""
+    Write-Host "Run ID: $runId"
+    Write-Host "Log: $logFile"
+    Write-Host ""
 
     Ensure-ProjectWritable
 
@@ -356,6 +393,7 @@ try {
     if ($SetupOnly) {
         Write-Ok "Setup concluido com sucesso."
         Write-Host "Log completo em: $logFile"
+        Write-RunSummary -Status "success" -Message "Setup concluido com sucesso" -ExitCode 0
         exit 0
     }
 
@@ -367,12 +405,34 @@ try {
 
     Write-Ok "Execucao concluida."
     Write-Host "Log completo em: $logFile"
+    Write-RunSummary -Status "success" -Message "Execucao concluida" -ExitCode 0
     exit 0
 }
 catch {
     Write-Host ""
     Write-Fail $_.Exception.Message
     Write-Fail "Consulte o log para detalhes: $logFile"
+
+    try {
+        @(
+            "=================================================="
+            "Feedz Mood Bot - Ultimo erro"
+            "timestamp=$((Get-Date).ToString('o'))"
+            "run_id=$runId"
+            "message=$($_.Exception.Message)"
+            "exception_type=$($_.Exception.GetType().FullName)"
+            "script_stack_trace=$($_.ScriptStackTrace)"
+            "position_message=$($_.InvocationInfo.PositionMessage)"
+            "bootstrap_log=$logFile"
+            "=================================================="
+            ""
+        ) | Set-Content -Path $errorLogFile -Encoding UTF8
+    }
+    catch {
+        Write-Fail "Nao foi possivel salvar detalhes em: $errorLogFile"
+    }
+
+    Write-RunSummary -Status "failed" -Message $_.Exception.Message -ExitCode 1
     exit 1
 }
 finally {

@@ -25,13 +25,13 @@ Observacao: evite rodar em pasta de rede, ZIP sem extrair, OneDrive bloqueado ou
 
 ### Escala de humor
 
-| Valor | Humor |
-| --- | --- |
-| 1 | Muito mal |
-| 2 | Mal |
-| 3 | Neutro |
-| 4 | Bem |
-| 5 | Muito bem |
+| Valor | Humor     |
+| ----- | --------- |
+| 1     | Muito mal |
+| 2     | Mal       |
+| 3     | Neutro    |
+| 4     | Bem       |
+| 5     | Muito bem |
 
 ### Scripts principais
 
@@ -42,20 +42,23 @@ Observacao: evite rodar em pasta de rede, ZIP sem extrair, OneDrive bloqueado ou
 
 ### Troubleshooting rapido
 
-| Problema | O que fazer |
-| --- | --- |
-| run.bat nao abre / fecha rapido | Abrir logs/launcher_latest.log |
+| Problema                         | O que fazer                                         |
+| -------------------------------- | --------------------------------------------------- |
+| run.bat nao abre / fecha rapido  | Abrir logs/launcher_latest.log                      |
 | Falha ao instalar pacote/browser | Rodar run.bat novamente (ha tentativas automaticas) |
-| Erro de permissao em arquivo | Mover pasta para Documents/Desktop |
-| Bot nao encontra widget de humor | Rodar python calibrate.py |
-| Erro de login | Recriar .env rodando run.bat novamente |
+| Erro de permissao em arquivo     | Mover pasta para Documents/Desktop                  |
+| Bot nao encontra widget de humor | Rodar python calibrate.py                           |
+| Erro de login                    | Recriar .env rodando run.bat novamente              |
 
 Para debug visual, use HEADLESS=false no .env.
 
 ### Logs
 
 - logs/launcher_latest.log: problemas para iniciar o launcher.
-- logs/run_YYYYMMDD_HHMMSS.log: erro tecnico completo do bootstrap/execucao.
+- logs/run_<RUN_ID>.log: log tecnico completo do bootstrap/execucao.
+- logs/app_<RUN_ID>.log e logs/app_latest.log: log tecnico do Python (bot).
+- logs/error_latest.log: ultimo erro detalhado de bootstrap.
+- logs/summary_latest.txt: resumo final da ultima execucao (status, exit code e caminhos de log).
 
 ---
 
@@ -93,4 +96,7 @@ After that, just double-click run.bat whenever you want to run it.
 ### Logs
 
 - logs/launcher_latest.log: launcher startup failures.
-- logs/run_YYYYMMDD_HHMMSS.log: detailed bootstrap/runtime failures.
+- logs/run_<RUN_ID>.log: detailed bootstrap/runtime failures.
+- logs/app_<RUN_ID>.log and logs/app_latest.log: Python bot technical logs.
+- logs/error_latest.log: latest detailed bootstrap error.
+- logs/summary_latest.txt: last execution summary (status, exit code, and log paths).
