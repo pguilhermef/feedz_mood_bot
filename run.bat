@@ -50,16 +50,6 @@ echo [..] Log do launcher: "%LAUNCHER_LOG%"
 >>"%LAUNCHER_LOG%" echo COMSPEC: %COMSPEC%
 >>"%LAUNCHER_LOG%" echo FEEDZ_RUN_ID: %FEEDZ_RUN_ID%
 
-call :ensure_daily_task
-
-if not exist "%BOOTSTRAP_PS1%" (
-    echo [ERRO] Arquivo bootstrap.ps1 nao encontrado.
-    >>"%LAUNCHER_LOG%" echo [ERRO] bootstrap.ps1 nao encontrado.
-    >>"%LAUNCHER_LOG%" echo Caminho esperado: %BOOTSTRAP_PS1%
-    call :pause_on_error
-    exit /b 1
-)
-
 call :resolve_powershell
 if errorlevel 1 (
     echo [ERRO] PowerShell nao encontrado nesta maquina.
@@ -74,6 +64,16 @@ if errorlevel 1 (
 if not exist "%PS_EXE%" (
     echo [ERRO] Executavel do PowerShell nao existe no caminho detectado.
     >>"%LAUNCHER_LOG%" echo [ERRO] Caminho invalido para PowerShell: %PS_EXE%
+    call :pause_on_error
+    exit /b 1
+)
+
+call :ensure_daily_task
+
+if not exist "%BOOTSTRAP_PS1%" (
+    echo [ERRO] Arquivo bootstrap.ps1 nao encontrado.
+    >>"%LAUNCHER_LOG%" echo [ERRO] bootstrap.ps1 nao encontrado.
+    >>"%LAUNCHER_LOG%" echo Caminho esperado: %BOOTSTRAP_PS1%
     call :pause_on_error
     exit /b 1
 )
@@ -140,6 +140,7 @@ schtasks /query /tn "%TASK_NAME%" >nul 2>nul
 if not errorlevel 1 (
     echo [OK] Tarefa agendada ja existe: %TASK_NAME%
     >>"%LAUNCHER_LOG%" echo Tarefa ja existe: %TASK_NAME%
+    call :ensure_task_start_when_available
     exit /b 0
 )
 
@@ -153,6 +154,21 @@ if errorlevel 1 (
 
 echo [OK] Tarefa agendada criada: %TASK_NAME% (%TASK_TIME% diario)
 >>"%LAUNCHER_LOG%" echo Tarefa criada com sucesso: %TASK_NAME% (%TASK_TIME% diario)
+call :ensure_task_start_when_available
+exit /b 0
+
+:ensure_task_start_when_available
+set "FEEDZ_TASK_NAME=%TASK_NAME%"
+"%PS_EXE%" -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$taskName = $env:FEEDZ_TASK_NAME; try { $service = New-Object -ComObject 'Schedule.Service'; $service.Connect(); $root = $service.GetFolder('\\'); $task = $root.GetTask($taskName); $def = $task.Definition; if (-not $def.Settings.StartWhenAvailable) { $def.Settings.StartWhenAvailable = $true; $null = $root.RegisterTaskDefinition($taskName, $def, 6, $null, $null, $def.Principal.LogonType, $null) }; exit 0 } catch { exit 1 }" >nul 2>nul
+if errorlevel 1 (
+    echo [AVISO] Nao foi possivel ativar execucao apos horario perdido.
+    echo         O bot continua funcionando, mas sem recuperacao automatica.
+    >>"%LAUNCHER_LOG%" echo Falha ao ativar StartWhenAvailable na tarefa %TASK_NAME%
+    exit /b 0
+)
+
+echo [OK] Recuperacao apos horario perdido ativada para %TASK_NAME%.
+>>"%LAUNCHER_LOG%" echo StartWhenAvailable ativo para %TASK_NAME%
 exit /b 0
 
 :resolve_powershell

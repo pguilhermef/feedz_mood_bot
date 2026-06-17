@@ -27,6 +27,7 @@ Depois da primeira execucao, continue usando somente `run.bat`.
 - Frequencia: diaria
 - Horario padrao: `08:30`
 - Comportamento: `run.bat` sempre verifica a tarefa; se nao existir, cria automaticamente.
+- Se o PC estiver desligado no horario, a tarefa roda assim que possivel quando o computador voltar.
 
 Observacao:
 - Se nao houver permissao para criar tarefa, a execucao do bot continua normalmente.
