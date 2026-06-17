@@ -11,7 +11,23 @@ from pathlib import Path
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent
+ROOT_DIR = BASE_DIR.parent
+
+
+def load_env_file() -> Path | None:
+    """Carrega .env priorizando app/.env e, se faltar, usando o .env antigo na raiz."""
+    candidates = [BASE_DIR / ".env", ROOT_DIR / ".env"]
+    for env_path in candidates:
+        if env_path.exists():
+            load_dotenv(dotenv_path=env_path, override=True)
+            return env_path
+
+    load_dotenv()
+    return None
+
+
+ENV_FILE_USED = load_env_file()
 
 FEEDZ_EMAIL = os.getenv("FEEDZ_EMAIL")
 FEEDZ_PASSWORD = os.getenv("FEEDZ_PASSWORD")
@@ -19,8 +35,8 @@ FEEDZ_MOOD = os.getenv("FEEDZ_MOOD", "4")  # 1=Muito Mal, 2=Mal, 3=Neutro, 4=Bem
 HEADLESS = os.getenv("HEADLESS", "true").lower() == "true"
 
 FEEDZ_URL = "https://app.feedz.com.br"
-PROFILE_DIR = Path(__file__).parent / "browser_profile"
-LOGS_DIR = Path(__file__).parent / "logs"
+PROFILE_DIR = BASE_DIR / "browser_profile"
+LOGS_DIR = BASE_DIR / "logs"
 
 RUN_ID_RAW = os.getenv("FEEDZ_RUN_ID", "manual")
 RUN_ID = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in RUN_ID_RAW)
@@ -74,13 +90,61 @@ def validate_env():
 def is_logged_in(page) -> bool:
     """Verifica se já estamos logados checando se o formulário de login está visível."""
     try:
-        # Se o botão de login existe e está visível, ainda não logou
-        if page.locator('#enter-login').is_visible(timeout=2000):
+        # Se os elementos principais do login estão visíveis, ainda não logou.
+        login_elements = ["#formLogin", "#login_email", "#passInput", "#enter-login"]
+        for selector in login_elements:
+            if page.locator(selector).first.is_visible(timeout=800):
+                return False
+    except Exception:
+        pass
+
+    try:
+        # Mesmo que não esteja visível, rota de autenticação ainda indica não logado.
+        if "/autenticacao" in page.url:
             return False
     except Exception:
         pass
-    # Confirma que estamos no Feedz e não numa página de erro
+
+    # Confirma que estamos no Feedz e fora do fluxo de autenticação.
     return "app.feedz.com.br" in page.url
+
+
+def _set_input_value(field, value: str) -> bool:
+    """Tenta preencher input por fill, digitação e fallback JS."""
+    try:
+        field.fill(value)
+        if field.input_value(timeout=500) == value:
+            return True
+    except Exception:
+        pass
+
+    try:
+        field.click()
+        field.press("Control+A")
+        field.press("Delete")
+        field.type(value, delay=20)
+        if field.input_value(timeout=800) == value:
+            return True
+    except Exception:
+        pass
+
+    try:
+        field.evaluate(
+            """(el, val) => {
+                el.focus();
+                el.value = val;
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                el.dispatchEvent(new Event('blur', { bubbles: true }));
+            }""",
+            value,
+        )
+        if field.input_value(timeout=800) == value:
+            return True
+    except Exception:
+        pass
+
+    return False
 
 
 def _fill_first_visible(page, selectors: list[str], value: str, label: str) -> bool:
@@ -88,10 +152,8 @@ def _fill_first_visible(page, selectors: list[str], value: str, label: str) -> b
     for selector in selectors:
         try:
             field = page.locator(selector).first
-            if field.is_visible(timeout=1200):
-                field.click()
-                field.fill("")
-                field.type(value, delay=20)
+            field.wait_for(state="attached", timeout=2500)
+            if field.is_visible(timeout=1200) and _set_input_value(field, value):
                 LOGGER.info("Campo %s preenchido com seletor: %s", label, selector)
                 return True
         except Exception:
@@ -122,13 +184,15 @@ def do_login(page):
     print("🔑 Fazendo login...")
 
     try:
-        page.wait_for_timeout(1500)
+        page.locator("#formLogin, #enter-login").first.wait_for(state="visible", timeout=15000)
+        page.wait_for_timeout(1200)
 
         email_ok = _fill_first_visible(
             page,
             [
+                '#login_email',
                 'input[name="login_email"]',
-                'input[id="login_email"]',
+                'input[data-test="email"]',
                 'input[type="email"]',
                 'input[name*="email" i]',
                 'input[id*="email" i]',
@@ -141,8 +205,9 @@ def do_login(page):
         password_ok = _fill_first_visible(
             page,
             [
+                '#passInput',
                 'input[name="login_password"]',
-                'input[id="login_password"]',
+                'input[data-test="password"]',
                 'input[type="password"]',
                 'input[name*="password" i]',
                 'input[id*="password" i]',
@@ -192,6 +257,10 @@ def run():
 
     print(f"🤖 Iniciando bot (humor: {FEEDZ_MOOD}/5)")
     LOGGER.info("Inicio da execucao | run_id=%s | humor=%s | headless_env=%s", RUN_ID, FEEDZ_MOOD, HEADLESS)
+    if ENV_FILE_USED:
+        LOGGER.info("Arquivo .env utilizado: %s", ENV_FILE_USED)
+    else:
+        LOGGER.warning("Nenhum arquivo .env encontrado por caminho explicito")
 
     # Na primeira vez ou quando o login expirar, abre visível para o usuário logar
     # Nas próximas vezes, a sessão já está salva no perfil
