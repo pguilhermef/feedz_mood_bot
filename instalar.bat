@@ -16,7 +16,7 @@ if errorlevel 1 (
 if errorlevel 1 (
     echo [ERRO] Nao foi possivel preparar pasta de logs.
     echo        Verifique permissao de escrita em "%PROJECT_DIR%" e em "%TEMP%".
-    pause
+    call :pause_on_error
     exit /b 1
 )
 
@@ -43,7 +43,7 @@ if not exist "%BOOTSTRAP_PS1%" (
     echo [ERRO] Arquivo bootstrap.ps1 nao encontrado.
     >>"%INSTALLER_LOG%" echo [ERRO] bootstrap.ps1 nao encontrado.
     >>"%INSTALLER_LOG%" echo Caminho esperado: %BOOTSTRAP_PS1%
-    pause
+    call :pause_on_error
     exit /b 1
 )
 
@@ -52,7 +52,7 @@ if errorlevel 1 (
     echo [ERRO] PowerShell nao encontrado nesta maquina.
     echo        Nao foi possivel iniciar o setup automatico.
     >>"%INSTALLER_LOG%" echo [ERRO] PowerShell nao encontrado.
-    pause
+    call :pause_on_error
     exit /b 1
 )
 
@@ -61,7 +61,7 @@ if errorlevel 1 (
 if not exist "%PS_EXE%" (
     echo [ERRO] Executavel do PowerShell nao existe no caminho detectado.
     >>"%INSTALLER_LOG%" echo [ERRO] Caminho invalido para PowerShell: %PS_EXE%
-    pause
+    call :pause_on_error
     exit /b 1
 )
 
@@ -73,7 +73,8 @@ if errorlevel 1 (
     echo.
     echo [ERRO] Setup automatico falhou.
     echo        Consulte os logs em: "%LOGS_DIR%"
-    pause
+    call :show_failure_summary
+    call :pause_on_error
     exit /b %SETUP_EXIT%
 )
 
@@ -92,6 +93,30 @@ set "PROBE_FILE=%TARGET_LOGS_DIR%\.write_test"
 (echo ok>"%PROBE_FILE%") >nul 2>nul
 if not exist "%PROBE_FILE%" exit /b 1
 del "%PROBE_FILE%" >nul 2>nul
+exit /b 0
+
+:show_failure_summary
+set "SUMMARY_LOG=%LOGS_DIR%\summary_latest.txt"
+set "ERROR_LOG=%LOGS_DIR%\error_latest.log"
+
+if exist "%SUMMARY_LOG%" (
+    echo.
+    echo ===== RESUMO DA ULTIMA EXECUCAO =====
+    type "%SUMMARY_LOG%"
+)
+
+if exist "%ERROR_LOG%" (
+    echo.
+    echo ===== ERRO TECNICO DETALHADO =====
+    type "%ERROR_LOG%"
+)
+
+exit /b 0
+
+:pause_on_error
+echo.
+echo [..] O terminal ficara aberto para voce revisar o erro.
+pause
 exit /b 0
 
 :resolve_powershell
