@@ -4,8 +4,9 @@ setlocal
 cd /d "%~dp0"
 
 set "PROJECT_DIR=%~dp0"
-set "BOOTSTRAP_PS1=%~dp0bootstrap.ps1"
-set "LOGS_DIR=%PROJECT_DIR%logs"
+set "APP_DIR=%PROJECT_DIR%app"
+set "BOOTSTRAP_PS1=%APP_DIR%\bootstrap.ps1"
+set "LOGS_DIR=%APP_DIR%\logs"
 set "TASK_NAME=FeedzMoodBot"
 set "TASK_TIME=08:30"
 set "TASK_SCRIPT=%~f0"
@@ -49,6 +50,14 @@ echo [..] Log do launcher: "%LAUNCHER_LOG%"
 >>"%LAUNCHER_LOG%" echo CMD version: %CMDEXTVERSION%
 >>"%LAUNCHER_LOG%" echo COMSPEC: %COMSPEC%
 >>"%LAUNCHER_LOG%" echo FEEDZ_RUN_ID: %FEEDZ_RUN_ID%
+>>"%LAUNCHER_LOG%" echo APP_DIR: %APP_DIR%
+
+if not exist "%APP_DIR%" (
+    echo [ERRO] Pasta interna "app" nao encontrada.
+    >>"%LAUNCHER_LOG%" echo [ERRO] Pasta app nao encontrada em: %APP_DIR%
+    call :pause_on_error
+    exit /b 1
+)
 
 call :resolve_powershell
 if errorlevel 1 (

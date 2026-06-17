@@ -2,13 +2,13 @@
 chcp 65001 >nul
 cd /d "%~dp0"
 
-set "PROJECT_ROOT=%~dp0.."
-set "VENV_ACTIVATE=%PROJECT_ROOT%\venv\Scripts\activate.bat"
-set "MAIN_FILE=%PROJECT_ROOT%\main.py"
-set "DIST_DIR=%PROJECT_ROOT%\dist"
+set "APP_DIR=%~dp0.."
+set "VENV_ACTIVATE=%APP_DIR%\venv\Scripts\activate.bat"
+set "MAIN_FILE=%APP_DIR%\main.py"
+set "DIST_DIR=%APP_DIR%\dist"
 
 if not exist "%VENV_ACTIVATE%" (
-    echo ❌ Ambiente virtual nao encontrado em "%PROJECT_ROOT%\venv".
+    echo ❌ Ambiente virtual nao encontrado em "%APP_DIR%\venv".
     echo    Rode run.bat uma vez para preparar o ambiente.
     pause
     exit /b 1
